@@ -39,19 +39,20 @@ Before any mutation, verify context:
 
 ```bash
 command -v ryvn                   # CLI installed
-ryvn auth profile describe        # authenticated and current profile
+ryvn auth status                  # authenticated and current profile
 ryvn --version 2>&1 || true       # check CLI version
 ```
 
 If the CLI is missing, guide the user to install it. If not authenticated, run `ryvn auth login`.
 
-If a profile needs to be switched, use `ryvn auth profile use <name>`.
+If a profile needs to be switched, use `ryvn auth use profile <name>`. To switch organizations, use `ryvn auth use org <name-or-id>`.
 
 **Environment context**: Many commands require `-e <environment>` to specify the target environment. Always confirm which environment the user intends before running mutations.
 
 **Global flags available on most commands**:
 - `--config` — config file path
 - `--profile` — named authentication profile
+- `--org` — organization override (slug, name, or UUID)
 - `--client-id` / `--client-secret` — service account override
 - `--debug` — debug logging
 - `-o json` — JSON output for reliable parsing
