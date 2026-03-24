@@ -1,0 +1,120 @@
+---
+name: use-ryvn
+description: >
+  Operate Ryvn infrastructure: manage organizations, provision environments,
+  deploy services and installations, configure blueprints, manage release
+  channels and promotion pipelines, set up connections and variable groups,
+  view logs, approve tasks, and handle preview deployments. Use this skill
+  whenever the user mentions Ryvn, environments, services, installations,
+  blueprints, deployments, infrastructure, provisioning, Kubernetes, cloud,
+  GCP, service installations, release channels, or promotion pipelines, even
+  if they don't say "Ryvn" explicitly.
+allowed-tools: Bash(ryvn:*), Bash(which:*), Bash(command:*)
+---
+
+# Use Ryvn
+
+## Ryvn resource model
+
+Ryvn organizes infrastructure in a hierarchy:
+
+- **Organization** is the top-level billing and team scope. A user belongs to one or more organizations.
+- **Environment** is an isolated infrastructure plane inside an organization (for example, `production`, `staging`). Environments are provisioned with cloud infrastructure (GCP).
+- **Service** is a deployable unit managed by Ryvn. Services define what can be deployed.
+- **Service Installation** (or just "installation") is a deployment of a service into a specific environment. This is the primary unit of deployment.
+- **Blueprint** is a template that defines a set of services and their configuration.
+- **Blueprint Installation** is an instance of a blueprint deployed to an environment.
+- **Release Channel** controls version flows for services.
+- **Promotion Pipeline** manages staged releases across environments.
+- **Maintenance Window** defines scheduled maintenance periods for an environment.
+- **Connection** is an external integration (Infisical for secrets, Temporal for workflows).
+- **Variable Group** is a shared configuration group that can be attached to services.
+- **Preview** is a PR/feature preview deployment.
+
+Most CLI commands use resource-type shorthand aliases. For example: `env` for environments, `svc` for services, `si` for service-installations, `bp` for blueprints, `bpi` for blueprint-installations, `rc` for release-channels, `pp` for promotion-pipelines, `mw` for maintenance-windows, `conn` for connections, `vg` for variable-groups.
+
+## Preflight
+
+Before any mutation, verify context:
+
+```bash
+command -v ryvn                   # CLI installed
+ryvn auth profile describe        # authenticated and current profile
+ryvn --version 2>&1 || true       # check CLI version
+```
+
+If the CLI is missing, guide the user to install it. If not authenticated, run `ryvn auth login`.
+
+If a profile needs to be switched, use `ryvn auth profile use <name>`.
+
+**Environment context**: Many commands require `-e <environment>` to specify the target environment. Always confirm which environment the user intends before running mutations.
+
+**Global flags available on most commands**:
+- `--config` — config file path
+- `--profile` — named authentication profile
+- `--client-id` / `--client-secret` — service account override
+- `--debug` — debug logging
+- `-o json` — JSON output for reliable parsing
+- `-e` / `--environment` — target environment
+
+## Common quick operations
+
+These are frequent enough to handle without loading a reference:
+
+```bash
+ryvn get environment                                     # list all environments
+ryvn get environment production -o json                  # get specific environment as JSON
+ryvn get services                                        # list all services
+ryvn get service-installations -e production             # list installations in an environment
+ryvn get blueprints                                      # list all blueprints
+ryvn get blueprint-installations -e production           # list blueprint installations
+ryvn describe environment production                     # detailed environment info
+ryvn describe installation my-service -e production      # detailed installation info
+ryvn api-resources                                       # list all supported resource types
+ryvn logs installations my-service -e production --follow # tail application logs
+```
+
+## Routing
+
+For anything beyond quick operations, load the reference that matches the user's intent. Load only what you need — one reference is usually enough, two at most.
+
+| Intent | Reference | Use for |
+|---|---|---|
+| Authenticate, install, or set up profiles | [setup.md](references/setup.md) | Authentication, profiles, service accounts, CLI installation and upgrade |
+| Ship code or manage releases | [deploy.md](references/deploy.md) | Environment provisioning/deprovisioning, deploying installations, dry runs, version pinning, task management |
+| Change configuration | [configure.md](references/configure.md) | Environments, services, installations, blueprints, blueprint inputs/exclusions, release channels, promotion pipelines, maintenance windows, connections, variable groups, previews, YAML-based create/replace/update/delete |
+| Check health or debug failures | [operate.md](references/operate.md) | Status, logs, tasks, troubleshooting deployments, monitoring installations |
+
+If the request spans two areas (for example, "deploy and then check if it's healthy"), load both references and compose one response.
+
+## Execution rules
+
+1. Prefer the Ryvn CLI for all operations.
+2. Use `-o json` output where available for reliable parsing.
+3. Resolve context before mutation. Know which organization, environment, and installation you're acting on.
+4. For destructive actions (delete installation, deprovision environment), confirm intent and state impact before executing.
+5. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
+6. When deploying installations, prefer `--dry-run` first if the user hasn't explicitly opted out.
+7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
+
+## Composition patterns
+
+Multi-step workflows follow natural chains:
+
+- **First deploy**: setup (authenticate), configure (create environment YAML), deploy (provision environment), configure (create installation YAML), deploy (deploy installation), operate (verify healthy)
+- **Add a service**: configure (create service installation YAML), deploy (deploy installation), operate (verify logs)
+- **Blueprint rollout**: configure (create blueprint), configure (set blueprint inputs), deploy (deploy installations), operate (verify)
+- **Fix a failure**: operate (triage logs and tasks), configure (fix config), deploy (redeploy), operate (verify recovery)
+- **Promote a release**: configure (set up promotion pipeline and release channels), deploy (promote across channels)
+- **Preview deployment**: configure (create preview), deploy (deploy preview), operate (check preview status)
+
+When composing, return one unified response covering all steps. Don't ask the user to invoke each step separately.
+
+## Response format
+
+For all operational responses, return:
+1. What was done (action and scope).
+2. The result (names, status, key output).
+3. What to do next (or confirmation that the task is complete).
+
+Keep output concise. Include command evidence only when it helps the user understand what happened.

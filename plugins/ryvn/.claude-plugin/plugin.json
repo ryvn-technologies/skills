@@ -1,0 +1,11 @@
+{
+  "name": "ryvn",
+  "version": "1.0.0",
+  "description": "Ryvn tools for Claude Code",
+  "author": {
+    "name": "Ryvn Technologies",
+    "email": "support@ryvn.dev"
+  },
+  "repository": "https://github.com/ryvn-technologies/skills",
+  "license": "MIT"
+}

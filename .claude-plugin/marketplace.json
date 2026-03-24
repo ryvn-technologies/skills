@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "ryvn-skills",
+  "description": "Ryvn agent skills for Claude Code",
+  "owner": {
+    "name": "Ryvn Technologies",
+    "email": "support@ryvn.dev"
+  },
+  "plugins": [
+    {
+      "name": "ryvn",
+      "description": "Ryvn tools for Claude Code - manage environments, services, deployments, and infrastructure",
+      "author": {
+        "name": "Ryvn Technologies"
+      },
+      "source": "./plugins/ryvn",
+      "category": "productivity"
+    }
+  ]
+}
