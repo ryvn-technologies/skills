@@ -35,10 +35,10 @@ Profiles allow you to maintain multiple identities -- different orgs, environmen
 ### Creating profiles
 
 ```bash
-ryvn auth profile create <name>                                            # Create a new empty profile
-ryvn auth profile create staging --api-url https://api.staging.ryvn.dev    # Custom API endpoint
-ryvn auth profile create ci --client-id <id> --client-secret <secret>      # Service account profile
-ryvn auth profile create staging --from production                         # Copy settings from an existing profile
+ryvn auth create profile <name>                                            # Create a new empty profile
+ryvn auth create profile staging --api-url https://api.staging.ryvn.dev    # Custom API endpoint
+ryvn auth create profile ci --client-id <id> --client-secret <secret>      # Service account profile
+ryvn auth create profile staging --from production                         # Copy settings from an existing profile
 ```
 
 Use `--api-url` when targeting non-production environments. Use `--client-id`/`--client-secret` for CI/CD profiles that authenticate as service accounts instead of users.
@@ -46,8 +46,8 @@ Use `--api-url` when targeting non-production environments. Use `--client-id`/`-
 ### Listing and switching profiles
 
 ```bash
-ryvn auth profile list                    # List all profiles (active profile shown with *)
-ryvn auth profile use <name>              # Switch the active profile
+ryvn auth get profile                    # List all profiles (active profile shown with *)
+ryvn auth use profile <name>              # Switch the active profile
 ```
 
 The active profile determines which credentials and API endpoint the CLI uses for all commands. Switching profiles is instant and does not require re-authentication.
@@ -55,11 +55,11 @@ The active profile determines which credentials and API endpoint the CLI uses fo
 ### Inspecting and removing profiles
 
 ```bash
-ryvn auth profile describe <name>         # Show profile details including token expiry
-ryvn auth profile delete <name>           # Remove a profile (cannot delete the active profile)
+ryvn auth describe profile <name>         # Show profile details including token expiry
+ryvn auth delete profile <name>           # Remove a profile (cannot delete the active profile)
 ```
 
-Before deleting, switch to a different profile with `ryvn auth profile use`. This prevents accidentally leaving the CLI in a broken state with no active profile.
+Before deleting, switch to a different profile with `ryvn auth use profile`. This prevents accidentally leaving the CLI in a broken state with no active profile.
 
 ## Service Accounts (CI/CD)
 
@@ -71,7 +71,25 @@ ryvn auth create service-user ci-bot --use  # Create and immediately configure t
 ryvn auth get service-user                # List all service users in the current org
 ```
 
-After creating a service account, store the client ID and secret securely. They are only displayed once. Use them either in a profile (`ryvn auth profile create ci --client-id <id> --client-secret <secret>`) or via environment variables.
+After creating a service account, store the client ID and secret securely. They are only displayed once. Use them either in a profile (`ryvn auth create profile ci --client-id <id> --client-secret <secret>`) or via environment variables.
+
+## Organization Management
+
+Organizations are the top-level scope in Ryvn. If you belong to multiple organizations, you can list and switch between them without changing profiles.
+
+```bash
+ryvn auth get org                         # List organizations you belong to
+ryvn auth use org <name-or-id>            # Switch the active organization (accepts slug, name, or UUID)
+ryvn auth status                          # Show current authentication status (profile, org, token expiry)
+```
+
+To target a specific organization for a single command without switching, use the `--org` flag:
+
+```bash
+ryvn get environment --org other-org      # List environments in a different org
+```
+
+Organization context is stored per-profile. Switching orgs updates the active profile's org setting.
 
 ## Configuration Files
 
@@ -83,7 +101,7 @@ Ryvn uses three configuration layers, from highest to lowest priority:
 | `~/.ryvn/credentials.yaml` | Profile management, credentials, and active profile selection |
 | `~/.ryvn/config.yaml` | Legacy config file (auto-migrated to credentials.yaml on first use) |
 
-You should not need to edit these files directly. Use the `ryvn auth profile` commands to manage configuration.
+You should not need to edit these files directly. Use the `ryvn auth` commands to manage configuration.
 
 ## Environment Variables
 
@@ -95,6 +113,7 @@ RYVN_AUTH_URL             # Auth endpoint (rarely needed)
 RYVN_CLIENT_ID            # Service account client ID
 RYVN_CLIENT_SECRET        # Service account secret
 RYVN_ENVIRONMENT          # Default environment for commands that accept one
+RYVN_ORG_ID               # Organization override (slug, name, or UUID)
 ```
 
 When `RYVN_CLIENT_ID` and `RYVN_CLIENT_SECRET` are both set, the CLI uses client credentials authentication regardless of the active profile. This is the recommended approach for CI/CD pipelines where you do not want to persist profiles on disk.
@@ -124,7 +143,11 @@ Run `ryvn auth login` to authenticate. If you are already logged in but see this
 
 ### Commands target the wrong org or environment
 
-Check which profile is active with `ryvn auth profile list`. Switch profiles with `ryvn auth profile use <name>`. Use `ryvn auth profile describe <name>` to verify the profile points to the correct API endpoint and org.
+Run `ryvn auth status` to see the active profile and organization. To fix:
+
+- **Wrong profile**: `ryvn auth use profile <name>` to switch profiles.
+- **Wrong org**: `ryvn auth use org <name-or-id>` to switch organizations within the current profile.
+- **Verify**: `ryvn auth describe profile <name>` to confirm the profile points to the correct API endpoint and org.
 
 ### Token expired
 
