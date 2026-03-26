@@ -11,7 +11,8 @@ if [[ "$tool_name" != "Bash" ]]; then
 fi
 
 # Auto-approve ryvn CLI commands
-if [[ "$command" =~ ^ryvn[[:space:]] ]]; then
+reject_pattern='[;&|$`><(){}]'
+if [[ "$command" =~ ^ryvn[[:space:]] ]] && ! [[ "$command" =~ $reject_pattern ]]; then
   cat <<'EOF'
 {
   "hookSpecificOutput": {

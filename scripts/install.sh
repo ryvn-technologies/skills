@@ -67,6 +67,7 @@ printf "\n${BOLD}Ryvn Skills${NC}\n\n"
 
 info "Downloading from ${CYAN}$REPO${NC}..."
 temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"' EXIT
 git clone --depth 1 --quiet "$REPO" "$temp_dir"
 printf "\n"
 
@@ -91,8 +92,6 @@ if [ "$(pwd)" != "$HOME" ]; then
     [ -d "./$parent" ] && install_skill "./$dir" "$name" "$temp_dir"
   done
 fi
-
-rm -rf "$temp_dir"
 
 printf "\n"
 completed "Skills installed successfully!"
