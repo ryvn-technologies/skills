@@ -86,6 +86,7 @@ For anything beyond quick operations, load the reference that matches the user's
 | Change configuration | [configure.md](references/configure.md) | Environments, services, installations, blueprints, blueprint inputs/exclusions, release channels, promotion pipelines, maintenance windows, connections, variable groups, previews, YAML-based create/replace/update/delete |
 | Check health or debug failures | [operate.md](references/operate.md) | Status, logs, tasks, troubleshooting deployments, monitoring installations |
 | Understand platform concepts, config format, networking, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ingress/domain patterns, Helm defaults |
+| Find docs, schemas, or context beyond these references | [request.md](references/request.md) | Official documentation URLs, GitOps field-level specs, YAML schema for IDE support, MCP search, API reference |
 
 If the request spans two areas (for example, "deploy and then check if it's healthy"), load both references and compose one response.
 
@@ -98,7 +99,7 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 5. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
 6. When deploying installations, prefer `--dry-run` first if the user hasn't explicitly opted out.
 7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
-8. When you need Ryvn documentation beyond these references, use the `search_ryvn` MCP tool to look it up (available as `mcp__ryvn-docs__search_ryvn` or `mcp__ryvn__search_ryvn`). If the MCP tool is not available, instruct the user to install it: add the Ryvn docs MCP server at `https://ryvn.ai/docs/mcp` to their `.mcp.json` or MCP settings.
+8. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
 
 ## Composition patterns
 
