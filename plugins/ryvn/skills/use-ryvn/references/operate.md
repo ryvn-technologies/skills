@@ -24,6 +24,31 @@ ryvn get installation-task <name> -e prod
 
 ---
 
+## K8s Resource Inspection
+
+List and inspect the Kubernetes resources (pods, deployments, services, etc.) backing an installation.
+
+```bash
+# List all K8s resources for an installation
+ryvn get manifest <installation-name> -e <env>
+
+# Describe all pods
+ryvn describe manifest pod -i <installation-name> -e <env>
+
+# Describe a specific resource by type/name
+ryvn describe manifest deployment/my-app -i <installation-name> -e <env>
+
+# Describe resources matching a name prefix
+ryvn describe manifest pod my-app -i <installation-name> -e <env>
+
+# JSON output for a single resource
+ryvn describe manifest deployment/my-app -i <installation-name> -e <env> -o json
+```
+
+`describe manifest` shows metadata, labels, annotations, owner references, status, spec, and events — similar to `kubectl describe`. The resource argument follows kubectl conventions: `TYPE [NAME_PREFIX]` or `TYPE/NAME`.
+
+---
+
 ## Logs
 
 ### Environment Provisioning Logs
@@ -135,6 +160,8 @@ Installation failed to deploy:
 ryvn logs installations <name> -e <env> --level error --since 1h
 ryvn describe installation <name> -e <env> -o json
 ryvn get installation-task <name> -e <env>
+ryvn get manifest <name> -e <env>
+ryvn describe manifest pod <name> -i <name> -e <env>
 ```
 
 Common causes:
@@ -150,6 +177,7 @@ Service is running but misbehaving:
 ```bash
 ryvn logs installations <name> -e <env> --search "error" --since 30m
 ryvn logs installations <name> -e <env> --level error --since 1h
+ryvn describe manifest pod <name> -i <name> -e <env>
 ```
 
 Common causes:

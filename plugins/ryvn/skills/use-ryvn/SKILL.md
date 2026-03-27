@@ -70,6 +70,8 @@ ryvn get blueprints                                      # list all blueprints
 ryvn get blueprint-installations -e production           # list blueprint installations
 ryvn describe environment production                     # detailed environment info
 ryvn describe installation my-service -e production      # detailed installation info
+ryvn get manifest my-service -e production                # list K8s resources for an installation
+ryvn describe manifest pod -i my-service -e production    # describe all pods in an installation
 ryvn api-resources                                       # list all supported resource types
 ryvn logs installations my-service -e production --follow # tail application logs
 ```
