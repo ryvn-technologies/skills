@@ -85,6 +85,7 @@ For anything beyond quick operations, load the reference that matches the user's
 | Ship code or manage releases | [deploy.md](references/deploy.md) | Environment provisioning/deprovisioning, deploying installations, dry runs, version pinning, task management |
 | Change configuration | [configure.md](references/configure.md) | Environments, services, installations, blueprints, blueprint inputs/exclusions, release channels, promotion pipelines, maintenance windows, connections, variable groups, previews, YAML-based create/replace/update/delete |
 | Check health or debug failures | [operate.md](references/operate.md) | Status, logs, tasks, troubleshooting deployments, monitoring installations |
+| Understand platform concepts, config format, networking, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ingress/domain patterns, Helm defaults |
 
 If the request spans two areas (for example, "deploy and then check if it's healthy"), load both references and compose one response.
 
@@ -97,6 +98,7 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 5. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
 6. When deploying installations, prefer `--dry-run` first if the user hasn't explicitly opted out.
 7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
+8. When you need Ryvn documentation beyond these references, use the `search_ryvn` MCP tool to look it up (available as `mcp__ryvn-docs__search_ryvn` or `mcp__ryvn__search_ryvn`). If the MCP tool is not available, instruct the user to install it: add the Ryvn docs MCP server at `https://ryvn.ai/docs/mcp` to their `.mcp.json` or MCP settings.
 
 ## Composition patterns
 
@@ -108,6 +110,7 @@ Multi-step workflows follow natural chains:
 - **Fix a failure**: operate (triage logs and tasks), configure (fix config), deploy (redeploy), operate (verify recovery)
 - **Promote a release**: configure (set up promotion pipeline and release channels), deploy (promote across channels)
 - **Preview deployment**: configure (create preview), deploy (deploy preview), operate (check preview status)
+- **First service setup (GitHub repo)**: configure (create service), deploy (create installation), merge the auto-created GitHub Actions workflow PR, push to main → CI auto-creates release → channel auto-deploys
 
 When composing, return one unified response covering all steps. Don't ask the user to invoke each step separately.
 

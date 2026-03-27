@@ -32,6 +32,19 @@ ryvn deprovision environment <name>                # Tear down all infrastructur
 
 Deprovisioning destroys cloud resources managed by the environment. Installations in the environment should be deleted first.
 
+## GitHub Actions CI/CD Flow
+
+When you create a service linked to a GitHub repository, Ryvn can auto-create a pull request with a GitHub Actions workflow file. **You must merge that PR before CI can build releases.**
+
+After the PR is merged, the automated flow is:
+
+1. Push to main (or configured branch)
+2. GitHub Actions builds the container image and creates a release in Ryvn
+3. The release is pushed to the service's release channel
+4. Installations subscribed to that channel automatically deploy the new release
+
+This is the primary deployment flow for most services. For ad-hoc deployments outside this automated flow (e.g., deploying a specific version, rolling back, or deploying to an environment not tracking a channel), use `ryvn run command enforce-deploy` or `ryvn update installation` (see below).
+
 ## Service Installation Deployment
 
 A service installation is an instance of a service deployed into a specific environment. Deployments create Terraform runs that apply infrastructure changes.
@@ -41,38 +54,6 @@ A service installation is an instance of a service deployed into a specific envi
 ```bash
 ryvn create -f installation.yaml                   # Create from a YAML manifest
 ```
-
-### Deploy a specific version
-
-```bash
-ryvn deploy installation <name> -e <env> --version 1.2.3
-```
-
-The `-e` / `--environment` flag is required for all installation commands. `--version` specifies the release version to deploy.
-
-### Dry-run (Terraform plan preview)
-
-```bash
-ryvn deploy installation <name> -e <env> --dry-run
-```
-
-A dry-run creates a Terraform plan without applying it. Use this to preview what changes a deployment would make. The resulting task will require approval before it can be applied (see Task Management below).
-
-### Deploy and watch
-
-```bash
-ryvn deploy installation <name> -e <env> --version 1.2.3 --wait --timeout 15m
-```
-
-By default, some deploy commands stream status updates. Use `--wait` to explicitly block until the deployment completes, and `--timeout` to control how long to wait (default 10m).
-
-### Fire-and-forget
-
-```bash
-ryvn deploy installation <name> -e <env> --version 1.2.3 --no-watch
-```
-
-Use `--no-watch` to return immediately after triggering the deployment without streaming status. You can check progress later with `ryvn get installation-task`.
 
 ## Update Installations (Re-deploy)
 
@@ -102,6 +83,13 @@ cat patch.yaml | ryvn update installation <name> -e <env> --patch-file -
 ```
 
 Use `--patch-file` to supply the patch as a YAML file. Pass `-` to read from stdin, which is useful for piping from other commands or generating patches dynamically.
+
+## When to Use `update` vs `replace`
+
+- **`update -p`** performs a **deep merge**: it reads the current config, merges your patch on top, then writes the result. Good for changing individual fields while preserving everything else.
+- **`replace -f`** performs a **full overwrite** of `spec.config`: the file contents become the entire config. Good for ensuring config exactly matches your file with no leftover keys from previous updates.
+
+For Helm values changes, `replace -f` is generally more reliable because deep-merge can produce unexpected results when removing keys or restructuring nested values.
 
 ## Full Config Replacement
 
@@ -142,12 +130,37 @@ ryvn task retry <uuid> --reason "transient failure"
 
 The `--reason` flag documents why the action was taken. Task UUIDs are displayed in the output of deploy, update, and delete commands, and in `ryvn get installation-task` output.
 
+## Installation Commands
+
+The `ryvn run command` subcommand provides additional installation operations beyond deploy and update.
+
+```bash
+# Trigger a job execution
+ryvn run command trigger-job -e <env> -i <name>
+
+# Roll back to previous deployment
+ryvn run command rollback -e <env> -i <name>
+
+# Force deploy a specific version (bypasses channel)
+ryvn run command enforce-deploy -e <env> -i <name> --version <version>
+
+# Preview changes without applying (Terraform plan)
+ryvn run command dry-run -e <env> -i <name>
+
+# Task operations by installation (alternative to `ryvn task` with UUID)
+ryvn run command retry-task -e <env> -i <name> --task-id <uuid>
+ryvn run command cancel-task -e <env> -i <name> --task-id <uuid>
+ryvn run command approve-task -e <env> -i <name> --task-id <uuid>
+```
+
+All commands auto-watch task progress by default. Use `--no-watch` to return immediately. Use `--reason` to annotate the action for audit trails.
+
 ## Promotion
 
 Promotion copies a release version from one channel to another, enabling staged rollouts (e.g., dev to staging to production).
 
 ```bash
-ryvn promote <strategy> --source <channel> --target <channel>
+ryvn promote releases --pipeline <pipeline-name> --source <channel> --target <channel>
 ```
 
 ## Deploy Flags Reference
@@ -157,8 +170,7 @@ ryvn promote <strategy> --source <channel> --target <channel>
 | `-e` / `--environment` | Target environment (required for installation commands) |
 | `-v` / `--version` | Release version to deploy |
 | `--dry-run` | Create a Terraform plan without applying |
-| `--no-watch` | Return immediately without streaming status |
-| `--wait` | Block until the operation completes |
+| `--no-watch` | Return immediately without streaming status (commands auto-watch by default) |
 | `--timeout` | Maximum time to wait for completion (default 10m) |
 | `--poll-interval` | Status check interval, minimum 2s (default 5s) |
 | `-o json` | Output in JSON format |

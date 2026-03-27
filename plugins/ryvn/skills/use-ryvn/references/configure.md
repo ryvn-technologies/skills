@@ -101,6 +101,8 @@ ryvn get variable-group                            # List all variable groups
 
 Release channels control which version of a service is deployed to each environment. They define the progression path for releases (e.g., dev -> staging -> production).
 
+When a new release is pushed to a channel, all installations subscribed to that channel automatically deploy the new version. This is the primary mechanism for continuous deployment via CI/CD — see deploy.md for the GitHub Actions flow.
+
 ```bash
 ryvn get release-channel                           # List all release channels
 ryvn update release-channel <name> -p '...'        # Update release channel configuration

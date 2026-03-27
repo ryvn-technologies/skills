@@ -156,6 +156,7 @@ Common causes:
 - Connection failures to dependencies
 - Misconfigured environment variables
 - Resource exhaustion (CPU, memory)
+- Health probe crash-loops: pods restart repeatedly when liveness/readiness probes are enabled without a working health endpoint. Probes are off by default — see the platform reference for details on enabling them correctly.
 
 ---
 
@@ -207,3 +208,5 @@ The daemon will continuously poll for pending provision/deprovision tasks, execu
 | Task stuck in pending | Check if approval is required: `ryvn get installation-task <name> -e <env>`, then `ryvn task approve <uuid>` |
 | Provisioner not picking up tasks | Verify service account credentials, network access, and that `--environment` matches the target |
 | Installation not updating | Confirm the update was applied: `ryvn describe installation <name> -e <env>`, check for pending tasks |
+| Pods crash-looping after config change | Check if health probes were enabled without a health endpoint. Set `livenessEnabled: false` and `readinessEnabled: false`, or add the health endpoint. See platform reference. |
+| Ingress returns 404 or webhook admission error | Verify `className` is `external-nginx` or `internal-nginx`, not `nginx`. See platform reference for networking patterns. |
