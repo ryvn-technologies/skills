@@ -2,13 +2,21 @@
 
 ## Installation
 
-The Ryvn CLI binary should be available on your PATH. To update to the latest version:
+Install the Ryvn CLI using the install script:
+
+```bash
+curl -fsSL https://ryvn.ai/install.sh | bash
+```
+
+This detects your OS and architecture, downloads the latest release, and adds `ryvn` to your PATH.
+
+To update to the latest version:
 
 ```bash
 ryvn upgrade
 ```
 
-This performs an in-place upgrade of the binary. Always upgrade before reporting bugs or requesting features to ensure you are on the latest version.
+Always upgrade before reporting bugs or requesting features to ensure you are on the latest version.
 
 ## Authentication
 
@@ -132,6 +140,18 @@ ryvn get blueprint                        # List all blueprints
 `ryvn api-resources` is useful for discovering the short aliases (e.g., `svc` for `service`, `env` for `environment`) that save typing in day-to-day use.
 
 ## Troubleshooting
+
+### `ryvn upgrade` fails
+
+`ryvn upgrade` does not work with Homebrew installations. If the upgrade fails, uninstall the Homebrew version and reinstall using the install script:
+
+```bash
+brew uninstall ryvn
+brew untap ryvn-technologies/tap  # optional cleanup
+curl -fsSL https://ryvn.ai/install.sh | bash
+```
+
+After reinstalling, `ryvn upgrade` will work for future updates.
 
 ### CLI not found after installation
 
