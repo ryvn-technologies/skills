@@ -10,27 +10,17 @@ Environments represent infrastructure targets (e.g., a GCP project, a Kubernetes
 
 ```bash
 ryvn create -f environment.yaml                    # Create environment from a YAML manifest
-ryvn deploy environment <name>                     # Trigger provisioning for an existing environment
 ```
 
-### Provision with GCP options
+Creating an environment automatically kicks off provisioning.
+
+### Delete an environment
 
 ```bash
-ryvn provision environment <name> \
-  --gcp-service-account <sa> \
-  --gcs-bucket-name <bucket> \
-  --gcs-bucket-prefix <prefix>
+ryvn delete environment <name>                     # Deprovision infrastructure and delete the environment
 ```
 
-Use `provision` when you need to pass cloud-specific parameters that are not part of the YAML manifest. The GCP flags configure the Terraform state backend and service identity.
-
-### Deprovision
-
-```bash
-ryvn deprovision environment <name>                # Tear down all infrastructure in the environment
-```
-
-Deprovisioning destroys cloud resources managed by the environment. Installations in the environment should be deleted first.
+Deleting an environment tears down all cloud resources and removes the environment. Installations in the environment should be deleted first.
 
 ## GitHub Actions CI/CD Flow
 
@@ -220,4 +210,4 @@ Verify the release channel has the version you are targeting. Use `ryvn get rele
 
 ### Environment not provisioned
 
-Installations cannot be deployed into an unprovisioned environment. Run `ryvn deploy environment <name>` or `ryvn provision environment <name>` first, and wait for provisioning to complete before deploying installations.
+Installations cannot be deployed into an unprovisioned environment. Run `ryvn update environment <name>` to re-trigger provisioning, and wait for it to complete before deploying installations.
