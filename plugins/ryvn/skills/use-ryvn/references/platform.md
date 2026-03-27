@@ -211,22 +211,6 @@ config: |
 
 ## Common Helm Chart Patterns
 
-### CNPG Cluster Secrets
-
-The `cnpg-cluster` Helm chart (CloudNativePG) creates a Kubernetes secret named `{installation-name}-app` containing the PostgreSQL connection string. For example, an installation named `cnpg-cluster` creates the secret `cnpg-cluster-app`.
-
-Reference it from other installations using `secretKeyRef`:
-
-```yaml
-config: |
-  env:
-    - name: DATABASE_URL
-      valueFrom:
-        secretKeyRef:
-          name: cnpg-cluster-app
-          key: uri
-```
-
 ### Health Probes
 
 For `server` type services, health probes are **disabled by default**:
