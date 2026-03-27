@@ -33,7 +33,7 @@ After the PR is merged, the automated flow is:
 3. The release is pushed to the service's release channel
 4. Installations subscribed to that channel automatically deploy the new release
 
-This is the primary deployment flow for most services. For ad-hoc deployments outside this automated flow (e.g., deploying a specific version, rolling back, or deploying to an environment not tracking a channel), use `ryvn run command enforce-deploy` or `ryvn update installation` (see below).
+This is the primary deployment flow for most services. For ad-hoc deployments outside this automated flow (e.g., deploying a specific version, rolling back, or deploying to an environment not tracking a channel), use `ryvn command enforce-deploy` or `ryvn update installation` (see below).
 
 ## Service Installation Deployment
 
@@ -122,26 +122,20 @@ The `--reason` flag documents why the action was taken. Task UUIDs are displayed
 
 ## Installation Commands
 
-The `ryvn run command` subcommand provides additional installation operations beyond deploy and update.
+The `ryvn command` verb provides additional installation operations beyond update.
 
 ```bash
 # Trigger a job execution
-ryvn run command trigger-job -e <env> -i <name>
+ryvn command trigger-job -e <env> -i <name>
 
 # Roll back to previous deployment
-ryvn run command rollback -e <env> -i <name>
+ryvn command rollback -e <env> -i <name>
 
 # Force deploy a specific version (bypasses channel)
-ryvn run command enforce-deploy -e <env> -i <name> --version <version>
-
-# Preview changes without applying (Terraform plan)
-ryvn run command dry-run -e <env> -i <name>
-
-# Task operations by installation (alternative to `ryvn task` with UUID)
-ryvn run command retry-task -e <env> -i <name> --task-id <uuid>
-ryvn run command cancel-task -e <env> -i <name> --task-id <uuid>
-ryvn run command approve-task -e <env> -i <name> --task-id <uuid>
+ryvn command enforce-deploy -e <env> -i <name> --version <version>
 ```
+
+For dry-runs, use `ryvn update installation <name> -e <env> --dry-run`. For task operations (approve, cancel, retry), use `ryvn task` with the task UUID (see Task Management above).
 
 All commands auto-watch task progress by default. Use `--no-watch` to return immediately. Use `--reason` to annotate the action for audit trails.
 

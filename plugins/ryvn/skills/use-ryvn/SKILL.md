@@ -50,7 +50,6 @@ If a profile needs to be switched, use `ryvn auth use profile <name>`. To switch
 **Environment context**: Many commands require `-e <environment>` to specify the target environment. Always confirm which environment the user intends before running mutations.
 
 **Global flags available on most commands**:
-- `--config` — config file path
 - `--profile` — named authentication profile
 - `--org` — organization override (slug, name, or UUID)
 - `--client-id` / `--client-secret` — service account override
@@ -95,7 +94,7 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 1. Prefer the Ryvn CLI for all operations.
 2. Use `-o json` output where available for reliable parsing.
 3. Resolve context before mutation. Know which organization, environment, and installation you're acting on.
-4. For destructive actions (delete installation, deprovision environment), confirm intent and state impact before executing.
+4. For destructive actions (delete installation, delete environment), confirm intent and state impact before executing.
 5. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
 6. When deploying installations, prefer `--dry-run` first if the user hasn't explicitly opted out.
 7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
