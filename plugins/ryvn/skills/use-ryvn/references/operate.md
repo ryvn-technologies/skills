@@ -68,10 +68,15 @@ Aliases: `environments`, `environment`, `env`
 
 Log source is auto-detected by service type:
 - **Terraform services** — shows task logs from the most recent deployment
-- **Other services** (web-server, helm-chart, etc.) — shows application logs from Loki
+- **Other services** (web-server, helm-chart, etc.) — shows application logs and k8s events from Loki
+
+By default, each log line is prefixed with compact labels matching the frontend log viewer:
+- `[<replica> <version>]` for application logs (replica = last 5 chars of pod for web-server/job, full pod for helm-chart)
+- `[<replica> event]` for k8s events (pod scheduling, image pulls, container starts)
+- Use `--no-labels` to hide labels for piping, or `--prefix` for kubectl-style `[pod/POD/CONTAINER]` format
 
 ```bash
-# Recent logs
+# Recent logs (shows labels by default)
 ryvn logs installations <name> -e <env>
 
 # Last hour
@@ -88,6 +93,18 @@ ryvn logs installations <name> -e <env> --since 2026-02-27T10:00:00Z --until 202
 
 # Filter by pod and exclude noise
 ryvn logs installations <name> -e <env> --pod my-api-abc123 --exclude "healthcheck"
+
+# Filter by version
+ryvn logs installations <name> -e <env> --version v1.2.3
+
+# Show only k8s events (scheduling, pulls, container starts)
+ryvn logs installations <name> -e <env> --type event
+
+# Show only application logs (no k8s events)
+ryvn logs installations <name> -e <env> --type application
+
+# Hide labels for piping
+ryvn logs installations <name> -e <env> --no-labels | grep "error"
 
 # JSON output with level filter
 ryvn logs installations <name> -e <env> --level error --since 1h -o json
@@ -107,10 +124,13 @@ Aliases: `installations`, `installation`, `inst`
 | `--level` | | Filter by severity: `trace`, `debug`, `info`, `warn`, `error`, `fatal` (repeatable). Installation logs only |
 | `--pod` | | Filter by specific pod name (repeatable). Installation logs only |
 | `--container` | | Filter by container name (repeatable). Installation logs only |
+| `--version` | | Filter by deployment version (repeatable, client-side). Installation logs only |
+| `--type` | | Filter by log type: `application`, `event`, or `all` (default: `all`). Installation logs only |
 | `--exclude` | | Exclude lines containing this text. Installation logs only |
 | `--output` | `-o` | Output format (`json`) |
 | `--timestamps` | | Show timestamps |
-| `--prefix` | | Prefix each line with `[pod/POD_NAME/CONTAINER_NAME]`. Installation logs only |
+| `--no-labels` | | Hide pod/version labels from output. Installation logs only |
+| `--prefix` | | Prefix each line with `[pod/POD_NAME/CONTAINER_NAME]` (overrides default labels). Installation logs only |
 
 ---
 
