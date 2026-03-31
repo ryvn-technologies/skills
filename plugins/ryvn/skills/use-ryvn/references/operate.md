@@ -219,9 +219,6 @@ ryvn update installation <name> -e <env> -p '{"spec": {...}}'
 # Retry a failed task
 ryvn task retry <task-uuid> --reason "fixed configuration"
 
-# Trigger a re-deploy (no patch = re-deploy with current settings)
-ryvn update installation <name> -e <env>
-
 # Verify recovery
 ryvn describe installation <name> -e <env>
 ryvn logs installations <name> -e <env> --since 5m

@@ -45,25 +45,17 @@ A service installation is an instance of a service deployed into a specific envi
 ryvn create -f installation.yaml                   # Create from a YAML manifest
 ```
 
-## Update Installations (Re-deploy)
+## Update Installations
 
-The `update` command patches an existing installation. It can re-deploy with current settings or apply configuration changes.
-
-### Re-deploy with current settings
-
-```bash
-ryvn update installation <name> -e <env>
-```
-
-Omitting a patch triggers a re-deploy using the installation's current configuration (status quo deployment).
+The `update` command patches an existing installation by applying configuration changes. A patch is required — use `-p` (inline) or `--patch-file` (file) to specify what to update. All merge logic runs server-side.
 
 ### Update with inline patch
 
 ```bash
-ryvn update installation <name> -e <env> -p '{"spec": {"version": "1.3.0"}}'
+ryvn update installation <name> -e <env> -p '{"spec": {"releaseChannel": "stable"}}'
 ```
 
-The `-p` flag accepts a JSON patch that is merged into the installation's existing spec.
+The `-p` flag accepts a JSON patch that is deep-merged into the installation's existing spec using the strategic merge strategy by default.
 
 ### Update from file
 
@@ -74,12 +66,71 @@ cat patch.yaml | ryvn update installation <name> -e <env> --patch-file -
 
 Use `--patch-file` to supply the patch as a YAML file. Pass `-` to read from stdin, which is useful for piping from other commands or generating patches dynamically.
 
+### Patch strategies (--type flag)
+
+The `--type` flag controls how the patch is merged with the existing installation config. Strategies only affect `spec.config` — other fields like `releaseChannel`, `branch`, `env`, and `secrets` are always applied directly regardless of strategy.
+
+| Strategy | Flag | Behavior |
+|---|---|---|
+| Strategic (default) | `--type strategic` | kubectl-style deep merge. Objects are recursively merged. Arrays with known merge keys (`env` by `key`, `secrets` by `name`) are merged by key. Other arrays are replaced wholesale. Use `$patch: delete` to remove items. |
+| JSON Merge Patch | `--type merge` | RFC 7386. Deep merges objects, replaces arrays wholesale. Set a field to `null` to delete it from the config. |
+| JSON Patch | `--type json` | RFC 6902. Provide an array of explicit operations (`add`, `remove`, `replace`, `move`, `copy`, `test`) for precise surgical edits. |
+
+#### Strategic merge (default)
+
+```bash
+# Deep-merge config — existing keys are preserved, new keys are added
+ryvn update installation my-app -e prod -p '{"spec": {"config": {"replicaCount": 3}}}'
+
+# Add/update environment variables by key
+ryvn update installation my-app -e prod --patch-file patch.yaml
+# patch.yaml:
+#   spec:
+#     env:
+#       - key: API_URL
+#         value: "https://api.example.com"
+#       - key: OLD_VAR
+#         $patch: delete
+```
+
+#### JSON Merge Patch (RFC 7386)
+
+```bash
+# Set a field to null to delete it from config
+ryvn update installation my-app -e prod --type merge -p '{"spec": {"config": {"legacyMode": null}}}'
+```
+
+#### JSON Patch (RFC 6902)
+
+```bash
+# Precise operations — add, remove, replace with explicit paths
+ryvn update installation my-app -e prod --type json -p '{"spec": {"config": [{"op": "replace", "path": "/replicaCount", "value": 5}, {"op": "remove", "path": "/legacyMode"}]}}'
+```
+
+### Secrets patching
+
+Secrets can be created, updated, or deleted through the patch spec. Each secret item requires a `name` and either a `value` (for create/update) or `$patch: delete` (for removal). Omitting both `value` and `$patch: delete` returns a 400 error.
+
+```yaml
+# patch.yaml
+spec:
+  secrets:
+    - name: DB_PASSWORD
+      value: "new-password"
+    - name: OLD_SECRET
+      $patch: delete
+```
+
+```bash
+ryvn update installation my-app -e prod --patch-file patch.yaml
+```
+
 ## When to Use `update` vs `replace`
 
-- **`update -p`** performs a **deep merge**: it reads the current config, merges your patch on top, then writes the result. Good for changing individual fields while preserving everything else.
-- **`replace -f`** performs a **full overwrite** of `spec.config`: the file contents become the entire config. Good for ensuring config exactly matches your file with no leftover keys from previous updates.
+- **`update`** deep-merges your patch into the existing config. Use it for changing individual fields while preserving everything else. Choose a strategy with `--type` based on how you want config merged (strategic for most cases, merge for null-deletion, json for surgical precision).
+- **`replace -f`** performs a **full overwrite** of `spec.config`: the file contents become the entire config. Use it when you want the config to exactly match your file with no leftover keys from previous updates.
 
-For Helm values changes, `replace -f` is generally more reliable because deep-merge can produce unexpected results when removing keys or restructuring nested values.
+For Helm values changes, `replace -f` is generally more reliable because deep-merge can produce unexpected results when removing keys or restructuring nested values. Alternatively, use `--type merge` with null values to remove specific keys while preserving the rest.
 
 ## Full Config Replacement
 
@@ -160,6 +211,7 @@ ryvn promote releases --pipeline <pipeline-name> --source <channel> --target <ch
 | `-o json` | Output in JSON format |
 | `-p` | Inline JSON patch for update commands |
 | `--patch-file` | File path for YAML patch (use `-` for stdin) |
+| `--type` | Patch strategy for installation updates: `strategic` (default), `merge`, or `json` |
 
 ## YAML Resource Format
 
