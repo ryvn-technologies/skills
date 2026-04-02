@@ -145,15 +145,14 @@ Unlike `update` (which merges), `replace` overwrites the full `spec.config` sect
 ```bash
 ryvn delete installation <name> -e <env>           # Delete a single installation
 ryvn delete installation svc1 svc2 svc3 -e prod    # Delete multiple installations at once
-ryvn delete installation <name> -e <env> --dry-run  # Preview what would be deleted
 ryvn delete -f installation.yaml                   # Delete using a YAML manifest
 ```
 
-Deleting an installation triggers a Terraform destroy run. Use `--dry-run` to preview the destroy plan before committing.
+Deleting an installation triggers an uninstall task (Terraform destroy or Helm uninstall). In environments with approval required, the task must be approved before proceeding.
 
 ## Task Management
 
-Deployments, updates, and deletes create **tasks** that track the lifecycle of Terraform runs. Some tasks (especially dry-runs) require explicit approval before they proceed.
+Deployments, updates, and deletes create **tasks** that track the lifecycle of Terraform runs. Some tasks require explicit approval before they proceed.
 
 ### Check task status
 
@@ -186,7 +185,7 @@ ryvn command rollback -e <env> -i <name>
 ryvn command enforce-deploy -e <env> -i <name> --version <version>
 ```
 
-For dry-runs, use `ryvn update installation <name> -e <env> --dry-run`. For task operations (approve, cancel, retry), use `ryvn task` with the task UUID (see Task Management above).
+For task operations (approve, cancel, retry), use `ryvn task` with the task UUID (see Task Management above).
 
 All commands auto-watch task progress by default. Use `--no-watch` to return immediately. Use `--reason` to annotate the action for audit trails.
 
@@ -204,7 +203,6 @@ ryvn promote releases --pipeline <pipeline-name> --source <channel> --target <ch
 |---|---|
 | `-e` / `--environment` | Target environment (required for installation commands) |
 | `-v` / `--version` | Release version to deploy |
-| `--dry-run` | Create a Terraform plan without applying |
 | `--no-watch` | Return immediately without streaming status (commands auto-watch by default) |
 | `--timeout` | Maximum time to wait for completion (default 10m) |
 | `--poll-interval` | Status check interval, minimum 2s (default 5s) |
@@ -240,9 +238,9 @@ Use `ryvn create -f` to create resources from manifests, `ryvn replace -f` to ov
 
 ### Task pending approval
 
-After a dry-run or certain deployment types, the task waits for approval. Use `ryvn get installation-task <name> -e <env>` to find the task UUID, then `ryvn task approve <uuid> --reason "..."` to proceed.
+Some deployment types require approval before proceeding. Use `ryvn get installation-task <name> -e <env>` to find the task UUID, then `ryvn task approve <uuid> --reason "..."` to proceed.
 
-### Dry-run shows unexpected changes
+### Unexpected changes after deploy
 
 Inspect the current state of the installation with `ryvn describe installation <name> -e <env>` to compare what is deployed versus what the new version or config would change.
 

@@ -98,9 +98,8 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 3. Resolve context before mutation. Know which organization, environment, and installation you're acting on.
 4. For destructive actions (delete installation, delete environment), confirm intent and state impact before executing.
 5. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
-6. When deploying installations, prefer `--dry-run` first if the user hasn't explicitly opted out.
-7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
-8. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
+6. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
+7. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
 
 ## Composition patterns
 
