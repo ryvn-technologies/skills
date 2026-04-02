@@ -97,17 +97,63 @@ Config values can use Go template syntax to reference dynamic values from the Ry
 | Variable | Description |
 |---|---|
 | `{{ .ryvn.installation.name }}` | Current installation name |
-| `{{ .ryvn.installation.outputs.<key> }}` | Current installation's Terraform outputs |
+| `{{ (serviceInstallation "<name>").outputs.<key> }}` | Output from a service installation |
+| `{{ (serviceInstallation "<name>").namespace }}` | Namespace of a service installation |
+| `{{ (serviceInstallation "<name>").outputsSecret }}` | K8s secret name containing secret outputs |
+| `{{ (blueprintInstallation "<name>").outputs.<key> }}` | Output from a blueprint installation |
+| `{{ (blueprintInstallation "<name>").outputsSecret }}` | K8s secret name containing secret outputs |
 
-### Cross-Installation References
+Secret outputs (`isSecret: true`) are **not** available via `.outputs`. For env vars, use `valueFromOutput` (see below). For Helm chart values, use `.outputsSecret` to get the K8s secret name and reference keys via `secretKeyRef`:
 
-Reference outputs from other installations using:
-
+```yaml
+config: |
+  env:
+    - name: DATABASE_URL
+      valueFrom:
+        secretKeyRef:
+          name: {{ (blueprintInstallation "database-stack").outputsSecret }}
+          key: connection_string
 ```
-{{ .ryvn.installations.<name>.outputs.<key> }}
+
+### Cross-Installation References (`valueFromOutput`)
+
+Use `valueFromOutput` on installation env vars to reference outputs from other installations. Prefer this over template functions — template functions render as plaintext, leaking secrets into manifests and logs. `valueFromOutput` routes secret outputs through the secrets system.
+
+Exactly one of `serviceInstallation` or `blueprintInstallation` must be specified. `name` is required and supports dot notation (e.g., `bucket.name`).
+
+```yaml
+env:
+  # Reference a service installation output
+  - key: DATABASE_HOST
+    valueFromOutput:
+      serviceInstallation: postgres-rds
+      name: endpoint
+
+  # Reference a blueprint installation output
+  - key: CACHE_HOST
+    valueFromOutput:
+      blueprintInstallation: cache-stack
+      name: host
+
+  # Secret output — automatically routed through secrets system
+  - key: DATABASE_URL
+    isSecret: true
+    valueFromOutput:
+      blueprintInstallation: database-stack
+      name: connection_string
 ```
 
-Installation names with hyphens are converted to underscores in templates. For example, `storage-service` becomes `storage_service`.
+To concatenate an output with other values, set the output as a base env var and reference it via Kubernetes-native `$(VAR)` syntax:
+
+```yaml
+env:
+  - key: DATABASE_HOST
+    valueFromOutput:
+      serviceInstallation: postgres-rds
+      name: endpoint
+  - key: DATABASE_URL
+    value: "postgresql://$(DATABASE_HOST):5432/mydb"
+```
 
 ### Release Images
 
@@ -132,17 +178,10 @@ Reference blueprint inputs using:
 
 **Control flow**: `if`/`else if`/`else`/`end`, comparison (`eq`, `ne`, `lt`, `gt`, `le`, `ge`), boolean (`and`, `or`, `not`)
 
-### Example: Cross-installation database wiring
+### Example: Template variables in config
 
 ```yaml
 config: |
-  env:
-    - name: DATABASE_HOST
-      value: {{ .ryvn.installations.postgres.outputs.host }}
-    - name: DATABASE_PORT
-      value: "{{ .ryvn.installations.postgres.outputs.port }}"
-    - name: APP_DOMAIN
-      value: {{ .ryvn.installation.name }}.{{ .ryvn.env.state.public_domain.name }}
   resources:
     requests:
       cpu: {{ default "500m" .ryvn.env.config.cpu }}
