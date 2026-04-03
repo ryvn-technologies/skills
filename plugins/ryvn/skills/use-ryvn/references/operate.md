@@ -213,7 +213,10 @@ Common causes:
 After identifying the root cause:
 
 ```bash
-# Fix configuration via patch
+# Redeploy without config changes (e.g., pick up variable group updates, retry after transient failure)
+ryvn command redeploy installation <name> -e <env> --reason "retry after transient failure"
+
+# Fix configuration via patch (when config changes are needed)
 ryvn update installation <name> -e <env> -p '{"spec": {...}}'
 
 # Retry a failed task

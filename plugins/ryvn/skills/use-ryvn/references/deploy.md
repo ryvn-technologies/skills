@@ -33,7 +33,7 @@ After the PR is merged, the automated flow is:
 3. The release is pushed to the service's release channel
 4. Installations subscribed to that channel automatically deploy the new release
 
-This is the primary deployment flow for most services. For ad-hoc deployments outside this automated flow (e.g., deploying a specific version, rolling back, or deploying to an environment not tracking a channel), use `ryvn command enforce-deploy` or `ryvn update installation` (see below).
+This is the primary deployment flow for most services. For ad-hoc deployments outside this automated flow (e.g., redeploying with current config, deploying a specific version, or rolling back), use `ryvn command redeploy`, `ryvn command enforce-deploy`, or `ryvn command rollback` (see Installation Commands below).
 
 ## Service Installation Deployment
 
@@ -172,9 +172,13 @@ The `--reason` flag documents why the action was taken. Task UUIDs are displayed
 
 ## Installation Commands
 
-The `ryvn command` verb provides additional installation operations beyond update.
+The `ryvn command` verb provides installation operations beyond config updates.
 
 ```bash
+# Redeploy with current config and latest release version (no config changes)
+ryvn command redeploy installation <name> -e <env>
+ryvn command redeploy installation <name> -e <env> --reason "pick up variable group changes"
+
 # Trigger a job execution
 ryvn command trigger-job -e <env> -i <name>
 
@@ -184,6 +188,8 @@ ryvn command rollback -e <env> -i <name>
 # Force deploy a specific version (bypasses channel)
 ryvn command enforce-deploy -e <env> -i <name> --version <version>
 ```
+
+**When to use `redeploy` vs `update`**: Use `ryvn command redeploy installation` when you want to re-trigger a deployment without changing any configuration (e.g., to pick up external changes like variable groups, secrets, or to retry after a transient failure). Use `ryvn update installation` when you need to change the installation's config, release channel, env vars, or secrets.
 
 For task operations (approve, cancel, retry), use `ryvn task` with the task UUID (see Task Management above).
 

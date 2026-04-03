@@ -306,7 +306,7 @@ Key defaults for `job` type installations (Helm values):
 
 | Field | Default | Notes |
 |---|---|---|
-| `schedule` | `""` (empty) | Empty = manual-only, triggered via `ryvn run command trigger-job`. Set a cron expression for scheduled execution. |
+| `schedule` | `""` (empty) | Empty = manual-only, triggered via `ryvn command trigger-job`. Set a cron expression for scheduled execution. |
 | `concurrencyPolicy` | `Forbid` | `Forbid`, `Allow`, or `Replace` |
 | `backoffLimit` | `1` | |
 | `restartPolicy` | `Never` | |
