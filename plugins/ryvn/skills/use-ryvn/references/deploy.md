@@ -200,7 +200,7 @@ All commands auto-watch task progress by default. Use `--no-watch` to return imm
 Promotion copies a release version from one channel to another, enabling staged rollouts (e.g., dev to staging to production).
 
 ```bash
-ryvn promote releases --pipeline <pipeline-name> --source <channel> --target <channel>
+ryvn promote release --pipeline <pipeline-name> --source <channel> --target <channel>
 ```
 
 ## Deploy Flags Reference
