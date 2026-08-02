@@ -46,8 +46,13 @@ When editing this plugin:
 
 - Keep `SKILL.md` focused on routing, preflight, composition, and common operations.
 - Keep references organized by information type (setup, deploy, configure, operate).
-- Keep references action-oriented with reasoning. Explain why, not only what.
-- Keep CLI behavior claims aligned with the Ryvn CLI source code.
+- Document observable behavior only: commands, inputs, outputs, error messages, and
+  hazards. Internal architecture, in-flight migration sequencing, and roadmap stay out.
+  State what happens, not why the codebase behaves that way.
+- Keep references action-oriented with reasoning. Explain why the reader would run
+  something, not why the implementation works the way it does.
+- Verify CLI behavior claims against the Ryvn CLI source code, then describe the
+  behavior a user sees rather than the code that produces it.
 - Bump `version` in `plugins/ryvn/.claude-plugin/plugin.json` in any PR that changes skill content.
 
 ## References

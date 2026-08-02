@@ -74,6 +74,8 @@ ryvn get manifest my-service -e production                # list K8s resources f
 ryvn describe manifest pod -i my-service -e production    # describe all pods in an installation
 ryvn api-resources                                       # list all supported resource types
 ryvn logs installations my-service -e production --follow # tail application logs
+ryvn get maintenance-window weekend -o yaml               # read a resource's YAML document
+ryvn update maintenance-window weekend -p '{"spec": {"timeZone": "UTC"}}'  # patch only what changes
 ```
 
 ## Routing
@@ -97,9 +99,13 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 2. Use `-o json` output where available for reliable parsing.
 3. Resolve context before mutation. Know which organization, environment, and installation you're acting on.
 4. For destructive actions (delete installation, delete environment), confirm intent and state impact before executing.
-5. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
-6. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
-7. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
+5. Change an existing resource with `ryvn update <kind> <name>` (alias `ryvn patch`): read the
+   current document with `ryvn get <kind> <name> -o yaml`, then send only the fields that change
+   as a strategic merge patch. Load [configure.md](references/configure.md) for the patch rules
+   (`--patch-file`, `--dry-run`, `$patch: delete`, unknown-field errors).
+6. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
+7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
+8. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
 
 ## Composition patterns
 

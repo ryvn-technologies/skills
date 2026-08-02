@@ -1,5 +1,24 @@
 # Ryvn CLI Configuration and Resource Management
 
+## Updating Resources
+
+`ryvn update <kind> <name>` (alias `ryvn patch`) is one command for every kind: read the
+current document with `ryvn get <kind> <name> -o yaml`, then send only the fields that
+change as a strategic merge patch.
+
+```bash
+ryvn update maintenance-window weekend -p '{"spec": {"timeZone": "UTC"}}'
+ryvn update maintenance-window weekend --patch-file patch.yaml --dry-run  # merged document, nothing written
+cat patch.yaml | ryvn patch mw weekend --patch-file -                     # stdin; avoids shell quoting
+```
+
+- Wrap spec fields in `spec` and send only what changes; `-e <environment>` for
+  environment-scoped kinds.
+- Invalid fields are rejected and the error names every offending path — fix them all in
+  one edit. If a kind is not supported, the error names the kinds that are.
+- Lists with a merge key merge item by item; remove an item with `$patch: delete`
+  (`spec.env: [{key: OLD_VAR, $patch: delete}]`). `spec.config` is replaced wholesale.
+
 ## Environment Management
 
 Environments represent deployment targets (e.g., production, staging, development). Each environment can have its own configuration, release channel, and approval requirements.
@@ -12,7 +31,10 @@ ryvn update environment prod -p '{"spec": {"displayName": "Production"}}'
 ryvn update environment prod --patch-file patch.yaml
 ```
 
-Patchable environment fields: `displayName`, `description`, `releaseChannel`, `requireApproval`. Use JSON patch format with `-p` for inline changes, or `--patch-file` to read from a file.
+`ryvn update environment` is an exception to the rules above: it accepts
+`spec.displayName`, `spec.description`, `spec.releaseChannel`, `spec.requireApproval`,
+`spec.config`, and `metadata.labels`. Any other field in the patch is silently ignored
+rather than rejected, so confirm the result with `ryvn get environment prod -o yaml`.
 
 ## Service Management
 
@@ -105,7 +127,8 @@ When a new release is pushed to a channel, all installations subscribed to that 
 
 ```bash
 ryvn get release-channel                           # List all release channels
-ryvn update release-channel <name> -p '...'        # Update release channel configuration
+ryvn get release-channel stable -o yaml            # Read the current document
+ryvn update release-channel stable -p '{"spec": {"isDefault": true}}'   # Make it the org default
 ```
 
 ## Promotion Pipelines
@@ -123,7 +146,17 @@ Maintenance windows define scheduled periods during which deployments and update
 
 ```bash
 ryvn get maintenance-window                        # List all maintenance windows
-ryvn update maintenance-window <name> -p '...'     # Update window configuration
+ryvn get maintenance-window weekend -o yaml        # Read the current document
+ryvn update maintenance-window weekend -p '{"spec": {"timeZone": "UTC"}}'
+ryvn update maintenance-window weekend --patch-file patch.yaml --dry-run   # Preview the merged document
+```
+
+A patch replaces `spec.intervals` wholesale, so send the full list when changing it:
+
+```yaml
+spec:
+  intervals:
+    - "Sat 00:00 - Mon 06:00"
 ```
 
 ## Previews
@@ -160,4 +193,4 @@ Check git repository connectivity and YAML syntax. Run `ryvn sync import --all` 
 
 ### Patch rejected
 
-Verify the field names are valid for the resource type. Use `ryvn describe <resource-type> <name>` to see the current spec and identify the correct field names. Patch payloads must follow the `{"spec": {...}}` structure.
+The error names every invalid path. Compare them against `ryvn get <kind> <name> -o yaml`, and check the patch wraps spec fields in `spec`. See Updating Resources above.
