@@ -57,6 +57,24 @@ ryvn describe blueprint my-template                # Detailed info including inp
 ryvn get blueprint-installation -e prod --blueprint my-bp  # List installations for a blueprint in an environment
 ```
 
+### Updating Blueprint Installations
+
+`ryvn update blueprint-installation <name>` (aliases `bpi`, `blueprint-installations`)
+follows the patch rules above; `-e <env>` is required.
+
+```bash
+ryvn update blueprint-installation my-stack -e prod -p '{"spec": {"inputs": [{"name": "cpu", "value": "2"}]}}'
+ryvn update blueprint-installation my-stack -e prod -p '{"spec": {"inputs": [{"name": "cpu", "$patch": "delete"}]}}'
+```
+
+- `spec.inputs` merges by `name`: unlisted inputs survive; `$patch: delete` drops one.
+- An input the installed blueprint version doesn't declare is stored and the response warns
+  by name, but stays inactive until a version declaring it is installed.
+- No `spec.blueprintVersion` or `spec.autoUpgradeEnabled`: use `ryvn set blueprint-version`
+  and patch `spec.disableAutoUpgrade` instead.
+
+`set`/`unset blueprint-input` below remain available as input shorthand.
+
 ### Blueprint Inputs
 
 Blueprint inputs allow you to pass configuration values to a blueprint installation. Inputs can be simple values or file references (useful for secrets or structured data).
@@ -181,7 +199,7 @@ ryvn sync import --all --wait --timeout 5m         # Wait with custom timeout (d
 
 ### Blueprint input not taking effect
 
-Verify the input name exactly matches the blueprint's expected inputs. Use `ryvn describe blueprint <name>` to see the list of accepted inputs. Input names are case-sensitive.
+Verify the input name exactly matches the blueprint's expected inputs. Use `ryvn describe blueprint <name>` to see the list of accepted inputs. Input names are case-sensitive. An input the installed version does not declare is stored but stays inactive, and setting it returns a warning naming it; it takes effect once a version that declares it is installed.
 
 ### Connection not found
 
