@@ -16,6 +16,11 @@ To update to the latest version:
 ryvn upgrade
 ```
 
+This also updates the `use-ryvn` agent skill for every detected tool, so the
+documented commands match the binary. It needs `npx` on the PATH; without it the
+skill step prints a warning and the binary upgrade still succeeds. Pass
+`--no-skills` to upgrade the binary only.
+
 Always upgrade before reporting bugs or requesting features to ensure you are on the latest version.
 
 ## Authentication

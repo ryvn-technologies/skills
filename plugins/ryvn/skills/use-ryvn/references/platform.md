@@ -51,16 +51,19 @@ spec:
         memory: "512Mi"
 ```
 
-**In CLI patches** (`ryvn update -p`), the CLI accepts structured objects and handles the conversion internally. Both forms work:
+**In CLI patches** (`ryvn update`), `config` is a string and is replaced wholesale: the
+patch value becomes the entire config, byte for byte. Send it from a file — inline JSON
+mangles multi-line config.
+
+```yaml
+# patch.yaml
+spec:
+  config: |
+    replicaCount: 3
+```
 
 ```bash
-# Structured object — CLI deep-merges into existing config
-ryvn update installation my-api -e prod \
-  -p '{"spec":{"config":{"replicaCount": 3}}}'
-
-# String form — also works
-ryvn update installation my-api -e prod \
-  -p '{"spec":{"config":"replicaCount: 3\n"}}'
+ryvn update installation my-api -e prod --patch-file patch.yaml
 ```
 
 ### Config can also be file references
