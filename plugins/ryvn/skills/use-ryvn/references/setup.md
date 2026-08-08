@@ -80,7 +80,7 @@ Service accounts are non-interactive identities intended for automation. They au
 
 ```bash
 ryvn auth create service-user <name>      # Create a service account (outputs client ID and secret)
-ryvn auth create service-user ci-bot --use  # Create and immediately configure the CLI to use it
+ryvn auth create service-user ci-bot --save-profile ci-bot  # Create and save a dedicated CLI profile
 ryvn auth get service-user                # List all service users in the current org
 ```
 
