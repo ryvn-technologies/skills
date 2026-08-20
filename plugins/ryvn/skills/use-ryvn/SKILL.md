@@ -75,6 +75,7 @@ ryvn describe manifest pod -i my-service -e production    # describe all pods in
 ryvn api-resources                                       # list all supported resource types
 ryvn logs installations my-service -e production --follow # tail application logs
 ryvn get maintenance-window weekend -o yaml               # read a resource's YAML document
+ryvn plan -f installation.yaml                            # preview what applying a YAML doc would change
 ryvn update maintenance-window weekend -p '{"spec": {"timeZone": "UTC"}}'  # patch only what changes
 ```
 
@@ -102,7 +103,10 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 5. Change an existing resource with `ryvn update <kind> <name>` (alias `ryvn patch`): read the
    current document with `ryvn get <kind> <name> -o yaml`, then send only the fields that change
    as a strategic merge patch. Load [configure.md](references/configure.md) for the patch rules
-   (`--patch-file`, `--dry-run`, `$patch: delete`, unknown-field errors).
+   (`--patch-file`, `--dry-run`, `$patch: delete`, unknown-field errors). Before applying a
+   YAML document, preview it with `ryvn plan -f <file>` — every syncable kind is supported; the
+   plan shows the field diff, blockers (e.g. immutable-field violations, drift), and side
+   effects without writing anything, and `--detailed-exitcode` exits 2 when it contains changes.
 6. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
 7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
 8. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
