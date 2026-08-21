@@ -58,6 +58,14 @@ ryvn update installation my-app -e prod --patch-file patch.yaml
 cat patch.yaml | ryvn update si my-app -e prod --patch-file -
 ```
 
+`update` returns as soon as the server accepts the patch: it prints the patch result
+(resource type, name, and whether it was created, updated, or unchanged) and exits. It
+does not print a task UUID and does not watch the resulting rollout, and it takes none
+of the task flags (`--reason`, `--no-watch`, `--timeout`, `--poll-interval`); passing
+one fails with `unknown flag`. Its relevant command-local flags are `-p/--patch`,
+`--patch-file`, `-e/--environment`, `--dry-run`, and `-o`. To follow what the patch
+triggered, poll `ryvn get installation-task <name> -e <env>`.
+
 Some fields cannot be patched: `spec.name`, `spec.service`, `spec.environment`,
 `spec.blueprint`, `spec.condition`, `spec.resources` and `spec.renamedFrom` are
 rejected with a validation error naming the path, and nothing is written. To rename an
@@ -184,7 +192,14 @@ ryvn task cancel <uuid> --reason "no longer needed"
 ryvn task retry <uuid> --reason "transient failure"
 ```
 
-The `--reason` flag documents why the action was taken. Task UUIDs are displayed in the output of deploy, update, and delete commands, and in `ryvn get installation-task` output.
+The `--reason` flag documents why the action was taken; it exists on `ryvn task approve|cancel|retry` and on `ryvn command *`, not on `update`, `create`, `replace`, or `delete`.
+
+You can always obtain task UUIDs from `ryvn get installation-task <name> -e <env>`. When a
+task-creating `ryvn command` watches by default, its first status line also includes the
+UUID. With `--no-watch`, it returns a valid monitoring command before discovering the
+task, so it does not print the UUID. `ryvn command unpin` creates no task. The
+sync-backed verbs (`create`, `replace`, `update`, `delete`) print the resource that
+changed, not a task UUID.
 
 ## Installation Commands
 
@@ -203,13 +218,38 @@ ryvn command rollback -e <env> -i <name>
 
 # Force deploy a specific version (bypasses channel)
 ryvn command enforce-deploy -e <env> -i <name> --version <version>
+
+# Dry run (helm diff or terraform plan) without applying
+ryvn command dry-run -e <env> -i <name>
+
+# Rollout restart workloads without changing version or config
+ryvn command restart -e <env> -i <name>            # web-server: auto-selects its Deployment
+ryvn command restart -e <env> -i <name> --all      # every workload in the installation
+ryvn command restart -e <env> -i <name> --deployment api --statefulset db
+
+# Pin to a release version, optionally with a configuration revision
+ryvn command pin -e <env> -i <name> --version <version>
+ryvn command pin -e <env> -i <name> --version <version> --config-version <revision>
+
+# Remove the pin and resume release-channel updates (no task is created)
+ryvn command unpin -e <env> -i <name>
 ```
+
+Command types: `rollback`, `enforce-deploy`, `trigger-job`, `dry-run`, `restart`, `pin`,
+and `unpin` (plus the `redeploy installation` subcommand above).
 
 **When to use `redeploy` vs `update`**: Use `ryvn command redeploy installation` when you want to re-trigger a deployment without changing any configuration (e.g., to pick up external changes like variable groups, secrets, or to retry after a transient failure). Use `ryvn update installation` when you need to change the installation's config, release channel, env vars, or secrets.
 
 For task operations (approve, cancel, retry), use `ryvn task` with the task UUID (see Task Management above).
 
-All commands auto-watch task progress by default. Use `--no-watch` to return immediately. Use `--reason` to annotate the action for audit trails.
+Task-creating command operations (`rollback`, `enforce-deploy`, `trigger-job`, `dry-run`,
+`restart`, `pin`, and `redeploy installation`) auto-watch until the task completes. Use
+`--no-watch` to return a monitoring command immediately, `--timeout`/`--poll-interval`
+to tune the wait, and `--reason` to annotate the action. `unpin` accepts `--reason` but
+creates no task and returns after removing the pin. `ryvn task approve|cancel|retry`
+accepts `--reason`; `ryvn sync import` uses `--wait` with `--timeout` and
+`--poll-interval`. The sync-backed verbs (`create`, `replace`, `update`, `delete`) do not
+accept these task-control flags and return as soon as the API accepts the change.
 
 ## Promotion
 
@@ -221,16 +261,26 @@ ryvn promote release --pipeline <pipeline-name> --source <channel> --target <cha
 
 ## Deploy Flags Reference
 
-| Flag | Description |
-|---|---|
-| `-e` / `--environment` | Target environment (required for installation commands) |
-| `-v` / `--version` | Release version to deploy |
-| `--no-watch` | Return immediately without streaming status (commands auto-watch by default) |
-| `--timeout` | Maximum time to wait for completion (default 10m) |
-| `--poll-interval` | Status check interval, minimum 2s (default 5s) |
-| `-o json` | Output in JSON format |
-| `-p` | Inline JSON patch for update commands |
-| `--patch-file` | File path for YAML patch (use `-` for stdin); required transport for multi-line config |
+Flags are command-local. Some command groups register shared flags, but those flags are
+meaningful only for the operations listed below. Check command help before composing them.
+
+| Flag | Where it works | Description |
+|---|---|---|
+| `-e` / `--environment` | most installation-scoped commands | Target environment (required for installation-scoped resources) |
+| `-o json` | commands whose help lists `--output` | Output in JSON format |
+| `-p` / `--patch` | `ryvn update` | Inline patch (JSON or YAML) |
+| `--patch-file` | `ryvn update` | File path for a patch (use `-` for stdin); required transport for multi-line config |
+| `--dry-run` | `ryvn update <kind> <name>` only (not the `update environment\|service\|variable-group` subcommands) | Merge and validate without writing, printing the merged document |
+| `-i` / `--installation` | positional `ryvn command <type>` operations | Target installation; `redeploy installation` takes the name positionally |
+| `--version` | `ryvn command enforce-deploy`, `dry-run`, `pin` | Release version to deploy |
+| `--config-version` | `ryvn command pin` | Configuration revision to hold |
+| `--disable-approvals` | `ryvn command dry-run` | Create a preview that cannot be applied |
+| `--reason` | `ryvn command` operations, `ryvn task approve\|cancel\|retry` | Audit annotation for the action |
+| `--no-watch` | task-creating `ryvn command` operations | Return a monitoring command instead of watching; `unpin` is already immediate |
+| `--timeout` | task-creating `ryvn command` operations (default 10m), `ryvn sync import --wait` (default 10m) | Maximum time to wait for completion |
+| `--poll-interval` | task-creating `ryvn command` operations, `ryvn sync import --wait` (default 5s) | Status check interval |
+| `--all`, `--deployment`, `--statefulset`, `--daemonset` | `ryvn command restart` | Workload selection |
+| `--force` | `ryvn delete installation\|environment` | Skip the uninstall task and delete immediately (orphans cloud resources). On macOS, the confirmation code appears in a native dialog and requires an interactive terminal, so it cannot be used from CI, SSH, or an agent |
 
 ## YAML Resource Format
 
@@ -267,12 +317,12 @@ Inspect the current state of the installation with `ryvn describe installation <
 
 ### Deployment timeout
 
-Increase the timeout with `--timeout 20m`. If the deployment consistently times out, check the underlying infrastructure logs. The deployment may still be running -- use `ryvn get installation-task` to check its current status.
+When a task-creating `ryvn command` stops watching, increase its wait with `--timeout 20m`; the timeout only bounds the CLI's watch, so the task keeps running -- use `ryvn get installation-task <name> -e <env>` to check its current status. `unpin` and the sync-backed verbs do not watch, so there is nothing to time out.
 
 ### Version not found
 
-Verify the release channel has the version you are targeting. Use `ryvn get release` or `ryvn describe service <name>` to inspect available versions.
+Verify the release channel has the version you are targeting. Use `ryvn get release -s <service>` (`-b <blueprint>` for blueprint releases) or `ryvn describe service <name>` to inspect available versions.
 
 ### Environment not provisioned
 
-Installations cannot be deployed into an unprovisioned environment. Run `ryvn update environment <name>` to re-trigger provisioning, and wait for it to complete before deploying installations.
+Installations cannot be deployed into an unprovisioned environment. Patching the environment's config re-triggers provisioning -- `ryvn update environment <name> -p '{"spec": {"config": ...}}'` (a patch is required; `ryvn update environment <name>` on its own is an error) -- then wait for it to complete before deploying installations. Track it with `ryvn logs environments <name> --follow`.

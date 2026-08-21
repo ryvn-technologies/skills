@@ -49,13 +49,21 @@ If a profile needs to be switched, use `ryvn auth use profile <name>`. To switch
 
 **Environment context**: Many commands require `-e <environment>` to specify the target environment. Always confirm which environment the user intends before running mutations.
 
-**Global flags available on most commands**:
+**Global flags**:
 - `--profile` — named authentication profile
 - `--org` — organization override (slug, name, or UUID)
 - `--client-id` / `--client-secret` — service account override
 - `--debug` — debug logging
-- `-o json` — JSON output for reliable parsing
-- `-e` / `--environment` — target environment
+
+`-o` / `--output` and `-e` / `--environment` are command-local: use them only where
+`ryvn <command> --help` lists them. Task-related flags are also per operation:
+
+- Task-creating `ryvn command <type>` operations and `ryvn command redeploy installation`
+  use `--reason`, `--no-watch`, `--timeout`, and `--poll-interval`. `unpin` accepts
+  `--reason` but creates no task, so there is nothing to watch.
+- `ryvn task approve|cancel|retry` accepts `--reason`.
+- `ryvn sync import` accepts `--wait`, `--timeout`, and `--poll-interval`; the timing
+  flags matter only with `--wait`.
 
 ## Common quick operations
 
@@ -85,7 +93,7 @@ For anything beyond quick operations, load the reference that matches the user's
 | Intent | Reference | Use for |
 |---|---|---|
 | Authenticate, install, or set up profiles | [setup.md](references/setup.md) | Authentication, profiles, service accounts, CLI installation and upgrade |
-| Ship code or manage releases | [deploy.md](references/deploy.md) | Environment provisioning/deprovisioning, deploying installations, dry runs, version pinning, task management |
+| Ship code or manage releases | [deploy.md](references/deploy.md) | Environment provisioning/deprovisioning, deploying and patching installations, installation commands (rollback, enforce-deploy, trigger-job, dry-run, restart, pin, unpin), promotions, task management |
 | Change configuration | [configure.md](references/configure.md) | Environments, services, installations, blueprints, blueprint inputs/exclusions, release channels, promotion pipelines, maintenance windows, connections, variable groups, previews, YAML-based create/replace/update/delete |
 | Check health or debug failures | [operate.md](references/operate.md) | Status, logs, tasks, troubleshooting deployments, monitoring installations |
 | Understand platform concepts, config format, networking, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ingress/domain patterns, Helm defaults |
@@ -127,12 +135,12 @@ Whenever you encounter a bug, rough edge, missing feature, or frustrating workfl
 
 ```bash
 ryvn feedback - <<'EOF'
-I was deploying a service installation and the command returned immediately
-with a task UUID. I had no way to know when it finished — I ended up running
-`ryvn get tasks` in a loop for several minutes checking the status field.
-I expected the deploy command to wait for completion or at least print
-status updates. Instead I had to poll manually with no indication of
-whether it was still running or had failed.
+I updated a service installation and the command returned immediately after
+reporting the resource update. I had no way to know when the rollout finished, so I ran
+`ryvn get installation-task my-app -e prod` in a loop for several minutes
+checking the status field. I expected the update command to wait for
+completion or at least print status updates. Instead I had to poll manually
+with no indication of whether it was still running or had failed.
 EOF
 ```
 

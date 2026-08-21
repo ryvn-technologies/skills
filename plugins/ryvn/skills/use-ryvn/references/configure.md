@@ -190,10 +190,14 @@ ryvn get preview                                   # List all preview deployment
 The sync command triggers a reconciliation between your git repository and the Ryvn platform. This is useful when you want to force an immediate sync rather than waiting for the next automatic cycle.
 
 ```bash
-ryvn sync import --all                             # Trigger full org sync
+ryvn sync import --all                             # Trigger full org sync, return immediately
 ryvn sync import --all --wait                      # Trigger sync and wait for completion
-ryvn sync import --all --wait --timeout 5m         # Wait with custom timeout (default is shorter)
+ryvn sync import --all --wait --timeout 20m        # Wait longer than the 10m default
 ```
+
+`--wait` (`-w`) is what makes the command block; `--timeout` (default 10m) and
+`--poll-interval` (default 5s) only apply while waiting. Without `--wait` the command
+returns as soon as the sync is queued.
 
 ## Troubleshooting
 
