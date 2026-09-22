@@ -4,11 +4,13 @@ description: >
   Operate Ryvn infrastructure: manage organizations, provision environments,
   deploy services and installations, configure blueprints, manage release
   channels and promotion pipelines, set up connections and variable groups,
-  view logs, approve tasks, and handle preview deployments. Use this skill
-  whenever the user mentions Ryvn, environments, services, installations,
-  blueprints, deployments, infrastructure, provisioning, Kubernetes, cloud,
-  GCP, service installations, release channels, or promotion pipelines, even
-  if they don't say "Ryvn" explicitly.
+  view logs, approve tasks, handle preview deployments, and write network
+  policies. Use this skill whenever the user mentions Ryvn, environments,
+  services, installations, blueprints, deployments, infrastructure,
+  provisioning, Kubernetes, cloud, GCP, service installations, release
+  channels, promotion pipelines, network policy, egress rules, isolating a
+  workload, or allowing a domain or IP, even if they don't say "Ryvn"
+  explicitly.
 allowed-tools: Bash(ryvn:*), Bash(which:*), Bash(command:*)
 ---
 
@@ -96,7 +98,7 @@ For anything beyond quick operations, load the reference that matches the user's
 | Ship code or manage releases | [deploy.md](references/deploy.md) | Environment provisioning/deprovisioning, deploying and patching installations, installation commands (rollback, enforce-deploy, trigger-job, dry-run, restart, pin, unpin), promotions, task management |
 | Change configuration | [configure.md](references/configure.md) | Environments, services, installations, blueprints, blueprint inputs/exclusions, release channels, promotion pipelines, maintenance windows, connections, variable groups, previews, YAML-based create/replace/update/delete |
 | Check health or debug failures | [operate.md](references/operate.md) | Status, logs, tasks, troubleshooting deployments, monitoring installations |
-| Understand platform concepts, config format, networking, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ingress/domain patterns, Helm defaults |
+| Understand platform concepts, config format, networking, network policy, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ingress/domain patterns, NetworkPolicy (egress rules, isolate a workload, allow a domain or IP), Helm defaults |
 | Find docs, schemas, or context beyond these references | [request.md](references/request.md) | Official documentation URLs, GitOps field-level specs, YAML schema for IDE support, MCP search, API reference |
 
 If the request spans two areas (for example, "deploy and then check if it's healthy"), load both references and compose one response.

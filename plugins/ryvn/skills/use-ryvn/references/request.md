@@ -9,6 +9,7 @@ Primary sources for authoritative Ryvn information:
 - **LLM summary**: `https://ryvn.ai/docs/llms.txt`
 - **Full LLM docs**: `https://ryvn.ai/docs/llms-full.txt`
 - **Direct doc pages**: `https://ryvn.ai/docs/<path>`
+- **Network policy**: `https://ryvn.ai/docs/networking/network-policy`
 
 Fetch official docs first for product behavior questions.
 

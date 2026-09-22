@@ -251,6 +251,72 @@ config: |
 
 ---
 
+## Network policy
+
+Network policy is in preview and isn't enabled by default. Contact Ryvn support to enable it. A network policy is a Kubernetes resource (`apiVersion: networking.ryvn.app/v1alpha1`, `kind: NetworkPolicy`, short name `rnp`) shipped in the service's Helm chart. It is NOT a Ryvn resource (never in Ryvn YAML or `ryvn create`) and NOT the built-in `networking.k8s.io` NetworkPolicy.
+
+```yaml
+apiVersion: networking.ryvn.app/v1alpha1
+kind: NetworkPolicy
+metadata:
+  name: agent-egress
+spec:
+  podSelector:
+    matchLabels:
+      app: agent
+  egress:
+    - name: anthropic
+      to:
+        - domainNames: [api.anthropic.com]
+      protocols:
+        - tcp: { destinationPort: { number: 443 } }
+    - name: redis
+      to:
+        - pods: { podSelector: { matchLabels: { app: redis } } }
+      protocols:
+        - tcp: { destinationPort: { number: 6379 } }
+```
+
+Each `to` entry sets exactly one of:
+
+| Field | Allows |
+|---|---|
+| `domainNames` | Exact hostnames. No wildcards. |
+| `networks` | IP ranges outside the cluster, CIDR notation, IPv4 or IPv6. |
+| `pods` | Pods matching `podSelector`, in every namespace unless `namespaceSelector` is set. |
+| `namespaces` | Every pod in the namespaces matching a label selector. |
+
+`protocols` is optional (omitted = every port); each entry is `tcp: { destinationPort: { number: N } }` or `udp: { destinationPort: { number: N } }`.
+
+These pass validation (`ACCEPTED=True`) but block traffic, so check them before applying:
+
+- Policies are allow-only and add up. Once a policy selects a pod, the pod is deny-by-default in any namespace, labeled or not: it keeps only what its policies allow plus cluster DNS, workload identity, and the Kubernetes API. Unselected pods are not affected. Egress only.
+- `networks` is only for addresses outside the cluster. A Service ClusterIP or pod IP in `networks` opens nothing; use `pods` or `namespaces` instead.
+- For `pods` and `namespaces`, `protocols` must name the destination pod's container port, not the Service port. A Service on port 80 with `targetPort: 8080` needs `8080`.
+
+To set a posture for a whole namespace, label it in the Environment's `namespaces` list. Put agents and untrusted code in `isolated`, and workloads that need the Kubernetes API (operators) in `restricted`:
+
+```yaml
+spec:
+  namespaces:
+    - name: agents
+      labels:
+        networking.ryvn.app/default-egress-policy: isolated
+```
+
+| Posture | Pods can reach by default | Policies can open |
+|---|---|---|
+| `restricted` | Cluster DNS, workload identity, and the Kubernetes API | Any other destination |
+| `isolated` | Nothing | Anything except workload identity and the Kubernetes API. A `domainNames` rule also brings DNS back for its pods. |
+
+In both postures, pods can't reach other pods (same namespace included) until a policy allows it. Postures only restrict outbound traffic.
+
+To debug, open a session with `ryvn connect <env>` and run `kubectl get rnp -n <ns>` and `kubectl describe rnp <name> -n <ns>` (when `ACCEPTED` is `False`, the condition message names the field at fault). `ACCEPTED=True` only means the policy is valid; to confirm a connection, use `ryvn connect <env> --exec` and try it from inside the pod with `kubectl exec`.
+
+Known limitations: https://ryvn.ai/docs/networking/network-policy#known-limitations
+
+---
+
 ## Common Helm Chart Patterns
 
 ### Health Probes
