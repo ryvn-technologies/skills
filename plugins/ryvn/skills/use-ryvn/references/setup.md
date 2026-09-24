@@ -86,6 +86,8 @@ ryvn auth get service-user                # List all service users in the curren
 
 After creating a service account, store the client ID and secret securely. They are only displayed once. Use them either in a profile (`ryvn auth create profile ci --client-id <id> --client-secret <secret>`) or via environment variables.
 
+To avoid storing a secret at all, CI jobs and agents (GitHub Actions, GitLab, GCP, Kubernetes, Cursor cloud agents) can exchange their own OIDC token for a service user's credential. See Workload Identity in [configure.md](configure.md).
+
 ## Organization Management
 
 Organizations are the top-level scope in Ryvn. If you belong to multiple organizations, you can list and switch between them without changing profiles.
@@ -127,9 +129,13 @@ RYVN_CLIENT_ID            # Service account client ID
 RYVN_CLIENT_SECRET        # Service account secret
 RYVN_ENVIRONMENT          # Default environment for commands that accept one
 RYVN_ORG_ID               # Organization override (slug, name, or UUID)
+RYVN_OIDC_SOURCE          # Workload identity: force a token source (env, file, github, gitlab, gcp, cursor, k8s)
+RYVN_OIDC_TOKEN           # Workload identity: raw OIDC token (also _FILE, _ENV variants)
+RYVN_SERVICE_USER         # Workload identity: target service-user id when several bindings match
+RYVN_BINDING_ID           # Workload identity: target binding id
 ```
 
-When `RYVN_CLIENT_ID` and `RYVN_CLIENT_SECRET` are both set, the CLI uses client credentials authentication regardless of the active profile. This is the recommended approach for CI/CD pipelines where you do not want to persist profiles on disk.
+When `RYVN_CLIENT_ID` and `RYVN_CLIENT_SECRET` are both set, the CLI uses client credentials regardless of the active profile, which suits CI/CD pipelines that should not persist profiles on disk. Workload identity takes precedence in GitHub Actions jobs with `id-token: write`, or when `RYVN_OIDC_SOURCE` or a `RYVN_OIDC_TOKEN*` variable is set (see Workload Identity in [configure.md](configure.md)).
 
 ## Resource Discovery
 
