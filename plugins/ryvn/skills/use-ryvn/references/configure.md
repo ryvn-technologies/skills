@@ -199,6 +199,54 @@ ryvn sync import --all --wait --timeout 20m        # Wait longer than the 10m de
 `--poll-interval` (default 5s) only apply while waiting. Without `--wait` the command
 returns as soon as the sync is queued.
 
+## Workload Identity (keyless CI)
+
+Workload issuers and federation bindings let CI jobs exchange a provider-issued OIDC token for a Ryvn credential — no static `RYVN_CLIENT_ID`/`RYVN_CLIENT_SECRET` on the workload. Issuers describe who can sign tokens; bindings map a token claim pin to a service user.
+
+### Issuers
+
+```bash
+ryvn get workload-issuer                                     # registered issuers
+ryvn get workload-issuer <issuer-id>                         # one issuer's full record
+ryvn get workload-issuer-preset                              # provider catalog (github, gitlab-com, gcp, kubernetes, cursor, custom)
+ryvn describe workload-issuer <issuer-url>                   # fetch JWKS URL + algorithms from the issuer's discovery doc
+ryvn create workload-issuer --preset github                  # prefill a known provider, then print provider setup steps + job snippet
+ryvn create workload-issuer <issuer-url> --jwks-url <url> --subject-keys sub --algorithms RS256
+ryvn create workload-issuer <issuer-url> --jwks-static-file jwks.json   # issuer without a public JWKS endpoint
+ryvn set workload-issuer <issuer-url> --enabled=false        # upsert by issuer URL; disabling stops its bindings working
+ryvn delete workload-issuer <issuer-id>                      # refuses while bindings exist; --delete-bindings cascades
+```
+
+Useful flags on `create`/`set`: `--preset`, `--display-name`, `--jwks-url` (exclusive with `--jwks-static-file`), `--algorithms`, `--subject-keys`, `--run-claim`, `--max-token-age` (seconds), `--allow-token-reuse`, `--enabled`.
+
+### Bindings
+
+```bash
+ryvn get workload-binding                                    # list bindings (id argument shows one as JSON)
+ryvn create workload-binding --issuer <issuer-id> --subject-key repository_id --subject-value 123456 \
+  --new-service-user ci-release                             # creates a dedicated service user with no default grants
+ryvn create workload-binding --from-token $TOKEN --new-service-user ci-release   # decode a real token to prefill pin + policy
+ryvn describe workload-binding <binding-id>                  # record + recent denial tail
+ryvn describe workload-binding <binding-id> --from-token $TOKEN         # dry-run the policy against real claims
+ryvn describe workload-binding <binding-id> --claims '{"repository_id":"123"}' --policy 'claims.repository_owner_id == "42"'
+ryvn set workload-binding <binding-id> --policy 'claims.repository_owner_id == "42"'   # also --service-user, --subject-*, --enabled, --clear-policy
+ryvn get workload-denials                                    # org-wide denial tail (incl. subject_not_registered rows)
+ryvn delete workload-binding <binding-id>
+```
+
+`create` upserts on (issuer, subject-key, subject-value, service-user); exactly one of `--service-user` or `--new-service-user` is required. `create` and `set` also accept `--policy-file`; the `describe` dry-run takes the claims input (`--claims`, `--claims-file`, or `--from-token`) plus an optional `--policy` override.
+
+### Service-user federation view
+
+```bash
+ryvn describe federation-credential <service-user>           # credential status, bindings, last exchange
+ryvn delete federation-credential <service-user>             # revoke the machine key + credential now; bindings fail closed until re-enrolled
+```
+
+### Job-side token sources
+
+The CLI picks up a workload token automatically: operator-set sources first (any of `RYVN_OIDC_TOKEN`/`RYVN_OIDC_TOKEN_FILE`/`RYVN_OIDC_TOKEN_ENV` — they're one tier, and setting more than one is an ambiguity error; `RYVN_OIDC_TOKEN_ENV` is the GitLab `id_tokens` shape), then ambient platform detection (GitHub Actions env, GCP metadata, Cursor agent socket, a Kubernetes projected token file). The GitHub source stays eligible whenever the Actions env is present — a job that granted `id-token: write` opted in, so it outranks static credentials and any other probe the host happens to expose (the GCE metadata server on GKE-hosted runners, a stray Cursor socket). The other ambient sources stay dormant when client credentials or a stored login exist; several detected sources without `RYVN_OIDC_SOURCE` is an error — set it to the intended one. `RYVN_SERVICE_USER`/`RYVN_BINDING_ID` select a target when more than one binding matches; `ryvn auth status` shows the source, issuer, and the binding the hub resolved (not just the requested selector).
+
 ## Troubleshooting
 
 ### Blueprint input not taking effect
