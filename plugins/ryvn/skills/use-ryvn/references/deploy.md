@@ -12,7 +12,16 @@ Environments represent infrastructure targets (e.g., a GCP project, a Kubernetes
 ryvn create -f environment.yaml                    # Create environment from a YAML manifest
 ```
 
-Creating an environment automatically kicks off provisioning.
+Creating an environment requests provisioning, which usually creates a plan for the first provision. That plan always waits for approval: the CLI prints its task ID, so review it with `ryvn task output <task-id>` once it finishes and start provisioning with `ryvn task approve <task-id>`. If the CLI reports `Provisioning started` instead, the environment is already applying and needs no approval.
+
+### Change an environment's infrastructure
+
+```bash
+ryvn update environment <name> -p '{"spec": {"config": {...}}}'
+ryvn describe environment <name>                   # The latest infrastructure task
+```
+
+Changing an environment's config or platform inputs plans the infrastructure change, which waits for approval. An environment provisioned by an external executor applies the change on the executor's next run instead. `ryvn describe environment <name>` shows the latest infrastructure task and its ID under `Infrastructure`, including the approve command while a plan waits. Approve a waiting plan with `ryvn task approve <task-id>`.
 
 ### Delete an environment
 
@@ -325,4 +334,4 @@ Verify the release channel has the version you are targeting. Use `ryvn get rele
 
 ### Environment not provisioned
 
-Installations cannot be deployed into an unprovisioned environment. Patching the environment's config re-triggers provisioning -- `ryvn update environment <name> -p '{"spec": {"config": ...}}'` (a patch is required; `ryvn update environment <name>` on its own is an error) -- then wait for it to complete before deploying installations. Track it with `ryvn logs environments <name> --follow`.
+Installations cannot be deployed into an unprovisioned environment. Patching the environment's config requests the first provisioning -- `ryvn update environment <name> -p '{"spec": {"config": ...}}'` (a patch is required; `ryvn update environment <name>` on its own is an error). When the CLI prints a plan's task ID, approve it with `ryvn task approve <task-id>`; when it reports `Provisioning started`, no approval is needed. Then wait for provisioning to complete before deploying installations. Track it with `ryvn logs environments <name> --follow`.
