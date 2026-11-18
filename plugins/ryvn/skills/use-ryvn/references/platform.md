@@ -311,7 +311,7 @@ spec:
 
 In both postures, pods can't reach other pods (same namespace included) until a policy allows it. Postures only restrict outbound traffic.
 
-To debug, open a session with `ryvn connect <env>` and run `kubectl get rnp -n <ns>` and `kubectl describe rnp <name> -n <ns>` (when `ACCEPTED` is `False`, the condition message names the field at fault). `ACCEPTED=True` only means the policy is valid; to confirm a connection, use `ryvn connect <env> --exec` and try it from inside the pod with `kubectl exec`.
+To debug, open a session with `ryvn connect <env>` and run `kubectl get rnp -n <ns>` and `kubectl describe rnp <name> -n <ns>` (when `ACCEPTED` is `False`, the condition message names the field at fault). `ACCEPTED=True` only means the policy is valid. To confirm a connection from inside the pod, run `kubectl exec` in a Connect session whose permission set allows pod exec.
 
 Known limitations: https://ryvn.ai/docs/networking/network-policy#known-limitations
 
