@@ -4,13 +4,13 @@ description: >
   Operate Ryvn infrastructure: manage organizations, provision environments,
   deploy services and installations, configure blueprints, manage release
   channels and promotion pipelines, set up connections and variable groups,
-  view logs, approve tasks, handle preview deployments, and write network
-  policies. Use this skill whenever the user mentions Ryvn, environments,
+  view logs, approve tasks, handle preview deployments, expose installations
+  with ports, domains, and Routes, and write network policies. Use this skill whenever the user mentions Ryvn, environments,
   services, installations, blueprints, deployments, infrastructure,
   provisioning, Kubernetes, cloud, GCP, service installations, release
-  channels, promotion pipelines, network policy, egress rules, isolating a
-  workload, or allowing a domain or IP, even if they don't say "Ryvn"
-  explicitly.
+  channels, promotion pipelines, exposing a service, custom domains, Routes,
+  Ingress, network policy, egress rules, isolating a workload, or allowing a
+  domain or IP, even if they don't say "Ryvn" explicitly.
 allowed-tools: Bash(ryvn:*), Bash(which:*), Bash(command:*)
 ---
 
@@ -98,7 +98,7 @@ For anything beyond quick operations, load the reference that matches the user's
 | Ship code or manage releases | [deploy.md](references/deploy.md) | Environment provisioning/deprovisioning, deploying and patching installations, installation commands (rollback, enforce-deploy, trigger-job, dry-run, restart, pin, unpin), promotions, task management |
 | Change configuration | [configure.md](references/configure.md) | Environments, services, installations, blueprints, blueprint inputs/exclusions, release channels, promotion pipelines, maintenance windows, connections, variable groups, previews, workload identity (keyless auth for CI jobs and agents: issuers, federation bindings), YAML-based create/replace/update/delete |
 | Check health or debug failures | [operate.md](references/operate.md) | Status, logs, tasks, troubleshooting deployments, monitoring installations |
-| Understand platform concepts, config format, networking, network policy, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ingress/domain patterns, NetworkPolicy (egress rules, isolate a workload, allow a domain or IP), Helm defaults |
+| Understand platform concepts, config format, networking, network policy, templates | [platform.md](references/platform.md) | Service types, config as YAML string, template variables, ports, domains, and Routes (and existing Ingress), NetworkPolicy (egress rules, isolate a workload, allow a domain or IP), Helm defaults |
 | Find docs, schemas, or context beyond these references | [request.md](references/request.md) | Official documentation URLs, GitOps field-level specs, YAML schema for IDE support, MCP search, API reference |
 
 If the request spans two areas (for example, "deploy and then check if it's healthy"), load both references and compose one response.
@@ -116,6 +116,10 @@ If the request spans two areas (for example, "deploy and then check if it's heal
 6. After mutations, verify the result with a read-back command (e.g., `ryvn get` or `ryvn describe`).
 7. Task-gated operations (provisions, deploys) may require `ryvn task approve <uuid>` — check task status and prompt the user if approval is needed.
 8. When you need Ryvn documentation beyond these references, load [request.md](references/request.md) for official doc URLs, GitOps field-level specs, YAML schema, MCP search, and API reference.
+9. To expose an installation, use `spec.networking` ports on a `server` and a `Route` in a `helm-chart`. Use Ingress
+   only when the installation already has one, or when native networking is not enabled in the environment. On an
+   existing cluster (`spec.setup: pre-provisioned`), Ryvn manages no networking: follow the cluster's own setup. Load
+   [platform.md](references/platform.md) for the checks and the patterns.
 
 ## Composition patterns
 

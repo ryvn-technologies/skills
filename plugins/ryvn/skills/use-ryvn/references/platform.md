@@ -10,7 +10,7 @@ Ryvn supports four service types. YAML manifests and the CLI use short names. Th
 
 | YAML / CLI name | API type | Description |
 |---|---|---|
-| `server` | `web-server.v1` | HTTP/HTTPS web applications with built-in load balancing, ingress, and health monitoring |
+| `server` | `web-server.v1` | HTTP/HTTPS web applications with built-in load balancing, networking, and health monitoring |
 | `job` | `job.v1` | One-off or scheduled tasks (Kubernetes CronJobs) |
 | `helm-chart` | `helm-chart.v1` | Arbitrary Helm charts for custom Kubernetes workloads |
 | `terraform` | `terraform.v1` | Infrastructure-as-code via Terraform modules |
@@ -40,11 +40,12 @@ metadata:
 spec:
   service: my-api
   environment: production
+  networking:
+    ports:
+      - number: 8080
+        public: true
   config: |
     replicaCount: 3
-    ingress:
-      enabled: true
-      className: external-nginx
     resources:
       requests:
         cpu: "500m"
@@ -195,59 +196,128 @@ config: |
 
 ## Networking Patterns
 
-### Ingress Controllers
+Ryvn manages networking only in environments that Ryvn provisions. Check the environment first:
 
-Each Ryvn environment has two NGINX ingress controllers:
+```bash
+ryvn get environment <env> -o yaml
+```
 
-| className | Issuer | Use for |
+`spec.setup: pre-provisioned` means an existing cluster that the user connected to Ryvn. Ryvn manages no networking there, so ignore the rest of this section and follow what the cluster already uses for ingress or gateways.
+
+In every other environment, an installation can be reachable on three networks:
+
+| Network | Reachable from | Address |
 |---|---|---|
-| `external-nginx` | `cert-manager.io/cluster-issuer: external-issuer` | Public internet-facing services |
-| `internal-nginx` | `cert-manager.io/cluster-issuer: internal-issuer` | VPC-internal services |
+| Private | Other installations in the environment | `<name>:<port>` in the same namespace, `<name>.<namespace>.svc.cluster.local:<port>` from another namespace |
+| Internal | The VPC and connected networks | `https://<name>.internal.<environment domain>` |
+| Public | The internet | `https://<name>.<environment domain>` |
 
-Using `className: nginx` (without the `external-` or `internal-` prefix) causes webhook admission errors. Always use the full name.
+`<name>` is the installation name for a `server`, and the Service name for a `helm-chart`. Ryvn creates the DNS records and TLS certificates for internal and public addresses. How the networks work: https://ryvn.ai/docs/networking/overview
+
+### Check that native networking is enabled
+
+Ports, domains, and Routes are Ryvn-native networking. An older environment may not have it enabled yet. Check once for each environment:
+
+```bash
+ryvn get installation ryvn-net -e <env>
+```
+
+A row with a `VERSION` means native networking is enabled.
+
+`Error: installation "ryvn-net" not found` means native networking is not enabled in this environment yet. Ryvn support can enable native networking on this environment. Until then, use [Ingress networking](#ingress-networking-deprecated).
+
+### Choose the mechanism
+
+When native networking is enabled:
+
+| Installation | Use |
+|---|---|
+| `server`, new or with no `ingress` in its config | `spec.networking` ports |
+| `helm-chart`, new or with no Ingress | A `Route` in the chart |
+| Any installation that already uses an Ingress | Keep the Ingress. It is deprecated but still supported. Convert it only when the user asks. |
+
+Do not add an Ingress to an installation that does not have one.
+
+Before you change networking on an existing installation, check which mechanism it uses:
+
+```bash
+ryvn get installation <name> -e <env> -o yaml
+```
+
+`spec.networking.ports` means ports and domains. `ingress.enabled: true` inside `spec.config` means Ingress.
+
+### Server: ports and domains
+
+List the ports the app listens on under `spec.networking`, next to `spec.config`. Every port gets a private and an internal address. `public: true` adds a public address, and `domains` adds custom domains:
+
+```yaml
+spec:
+  networking:
+    ports:
+      - number: 3000
+        public: true
+        domains:
+          - app.example.com
+```
+
+When you patch `spec.networking`, ports merge by `number`. A port's `domains` list is replaced as a whole, so send every domain you want to keep.
+
+- Every field, such as `name` for a second port and `protocol: http2` for gRPC: https://ryvn.ai/docs/iac/installations/server#networking
+- Paths of one domain to different installations: https://ryvn.ai/docs/networking/overview#path-based-routing
+- An app that terminates TLS itself: https://ryvn.ai/docs/networking/overview#tls-passthrough
+
+### Helm chart: Route
+
+Add a `Route` to the chart next to the Service it exposes, and read the hostname from the chart's values:
+
+```yaml
+# templates/route.yaml
+apiVersion: networking.ryvn.app/v1alpha1
+kind: Route
+metadata:
+  name: web
+spec:
+  exposure: [public]
+  domains: [{{ .Values.route.host | quote }}]
+  rules:
+    - to: [{ name: web, port: http }]
+```
+
+Set the value in the installation config: `route.host: "web.{{ .ryvn.env.state.public_domain.name }}"`.
+
+- `to` is a Service in the Route's namespace and one of its ports, by name or number.
+- A public Route (`exposure: [public]`) takes a hostname in the public domain. An internal Route (`exposure: [internal]`) takes a hostname in the internal domain. To serve a Service on both networks, add one Route for each network.
+- For a third-party chart, turn its Ingress off in the chart's values and add a Route with the `ryvn-routes` chart: https://ryvn.ai/docs/networking/routes#third-party-charts
+- Path-based routing, TLS passthrough, external auth, and troubleshooting: https://ryvn.ai/docs/networking/routes
 
 ### Domains
 
-Each environment gets a default public domain in the format `{environment}.{org-slug}.ryvn.run`. Installation-level URLs follow the pattern `{installation-name}.{environment}.{org-slug}.ryvn.run`. Custom root domains replace the `ryvn.run` suffix when configured on the environment.
+Do not build domain strings by hand. Use the environment's domain variables, which resolve to the right domain for the environment:
 
-Rather than constructing domain strings manually, use the environment's domain output variables which resolve to the correct domain for the environment (whether default `ryvn.run` or custom):
+- `{{ .ryvn.env.state.public_domain.name }}`: public domain, such as `production.acme-corp-xhnjr.ryvn.run`
+- `{{ .ryvn.env.state.internal_domain.name }}`: internal domain, reachable from the VPC and connected networks
 
-- `{{ .ryvn.env.state.public_domain.name }}` — public domain (e.g., `production.acme-corp-xhnjr.ryvn.run`)
-- `{{ .ryvn.env.state.internal_domain.name }}` — internal domain (VPC-only)
+A custom domain needs DNS records at the user's DNS provider, and you cannot create them. Add the domain, run `ryvn describe installation <name> -e <env>`, and give the user the records listed under `DNS records`. What the records are and how to check them: https://ryvn.ai/docs/networking/domains-and-tls#create-the-dns-records
 
-For installation-specific hostnames, prefix with the installation name:
+### Verify addresses
 
-```
-{{ .ryvn.installation.name }}.{{ .ryvn.env.state.public_domain.name }}
-```
+After a deploy, `ryvn describe installation <name> -e <env>` lists every internal and public address under `Endpoints` with its `State`: `Active`, `Pending`, or `Error`. `Reason` says what a `Pending` address waits for, or what to fix. With `-o json`, read `endpoints`.
 
-### Full Ingress Example
+### Ingress networking (deprecated)
 
-```yaml
-config: |
-  ingress:
-    enabled: true
-    className: external-nginx
-    annotations:
-      cert-manager.io/cluster-issuer: external-issuer
-    hosts:
-      - host: {{ .ryvn.installation.name }}.{{ .ryvn.env.state.public_domain.name }}
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: {{ .ryvn.installation.name }}-tls
-        hosts:
-          - {{ .ryvn.installation.name }}.{{ .ryvn.env.state.public_domain.name }}
-```
+Ingress is deprecated but still supported. Use it for an installation that already has an Ingress, and in an environment where native networking is not enabled yet.
 
-For services that should not be publicly accessible (e.g., internal databases, object storage), disable ingress entirely:
+For a `server`, set `ingress` in `spec.config`. For a `helm-chart`, set the chart's ingress values. Both take `enabled: true`, a class, its issuer annotation, `hosts`, and `tls`:
 
-```yaml
-config: |
-  ingress:
-    enabled: false
-```
+| className | Issuer annotation | Network |
+|---|---|---|
+| `external-nginx` | `cert-manager.io/cluster-issuer: external-issuer` | Public |
+| `internal-nginx` | `cert-manager.io/cluster-issuer: internal-issuer` | Internal |
+
+- Full example: https://ryvn.ai/docs/networking/migration-guides/ingress-networking#configure-an-ingress
+- `className: nginx`, without the `external-` or `internal-` prefix, causes webhook admission errors.
+- Many `nginx.ingress.kubernetes.io/*` annotations have no effect or are rejected. Check the annotation before you add it: https://ryvn.ai/docs/networking/migration-guides/ingress-networking#annotation-support
+- To convert, move the hosts to `spec.networking` and remove `ingress` from the config (server), or turn the Ingress off and add a Route (Helm chart). A custom domain needs different DNS records after the conversion, so tell the user before you convert.
 
 ---
 
@@ -270,50 +340,20 @@ spec:
         - domainNames: [api.anthropic.com]
       protocols:
         - tcp: { destinationPort: { number: 443 } }
-    - name: redis
-      to:
-        - pods: { podSelector: { matchLabels: { app: redis } } }
-      protocols:
-        - tcp: { destinationPort: { number: 6379 } }
 ```
-
-Each `to` entry sets exactly one of:
-
-| Field | Allows |
-|---|---|
-| `domainNames` | Exact hostnames. No wildcards. |
-| `networks` | IP ranges outside the cluster, CIDR notation, IPv4 or IPv6. |
-| `pods` | Pods matching `podSelector`, in every namespace unless `namespaceSelector` is set. |
-| `namespaces` | Every pod in the namespaces matching a label selector. |
-
-`protocols` is optional (omitted = every port); each entry is `tcp: { destinationPort: { number: N } }` or `udp: { destinationPort: { number: N } }`.
 
 These pass validation (`ACCEPTED=True`) but block traffic, so check them before applying:
 
-- Policies are allow-only and add up. Once a policy selects a pod, the pod is deny-by-default in any namespace, labeled or not: it keeps only what its policies allow plus cluster DNS, workload identity, and the Kubernetes API. Unselected pods are not affected. Egress only.
-- `networks` is only for addresses outside the cluster. A Service ClusterIP or pod IP in `networks` opens nothing; use `pods` or `namespaces` instead.
-- For `pods` and `namespaces`, `protocols` must name the destination pod's container port, not the Service port. A Service on port 80 with `targetPort: 8080` needs `8080`.
+- A policy only allows, and only outbound traffic. Once a policy selects a pod, the pod keeps only what its policies allow plus cluster DNS, workload identity, and the Kubernetes API.
+- `networks` is only for addresses outside the cluster. For a pod or a Service in the cluster, use `pods` or `namespaces`.
+- For `pods` and `namespaces`, `protocols` names the pod's container port, not the Service port.
 
-To set a posture for a whole namespace, label it in the Environment's `namespaces` list. Put agents and untrusted code in `isolated`, and workloads that need the Kubernetes API (operators) in `restricted`:
+Read the docs for the rest:
 
-```yaml
-spec:
-  namespaces:
-    - name: agents
-      labels:
-        networking.ryvn.app/default-egress-policy: isolated
-```
-
-| Posture | Pods can reach by default | Policies can open |
-|---|---|---|
-| `restricted` | Cluster DNS, workload identity, and the Kubernetes API | Any other destination |
-| `isolated` | Nothing | Anything except workload identity and the Kubernetes API. A `domainNames` rule also brings DNS back for its pods. |
-
-In both postures, pods can't reach other pods (same namespace included) until a policy allows it. Postures only restrict outbound traffic.
-
-To debug, open a session with `ryvn connect <env>` and run `kubectl get rnp -n <ns>` and `kubectl describe rnp <name> -n <ns>` (when `ACCEPTED` is `False`, the condition message names the field at fault). `ACCEPTED=True` only means the policy is valid. To confirm a connection from inside the pod, run `kubectl exec` in a Connect session whose permission set allows pod exec.
-
-Known limitations: https://ryvn.ai/docs/networking/network-policy#known-limitations
+- Every `to` field and `protocols`: https://ryvn.ai/docs/networking/network-policy#rules
+- Restrict a whole namespace by default with the `networking.ryvn.app/default-egress-policy` label: https://ryvn.ai/docs/networking/network-policy#namespace-posture
+- Check a policy and test a connection with `ryvn connect <env>`: https://ryvn.ai/docs/networking/network-policy#check-a-policy
+- Limitations on each cloud: https://ryvn.ai/docs/networking/network-policy#known-limitations
 
 ---
 
@@ -356,9 +396,9 @@ Key defaults for `server` type installations (Helm values):
 | Field | Default | Notes |
 |---|---|---|
 | `replicaCount` | `1` | |
-| `service.port` | `80` | |
+| `service.port` | `80` | Not used when `spec.networking.ports` is set |
 | `service.type` | `ClusterIP` | |
-| `ingress.enabled` | `false` | Must enable explicitly for external access |
+| `ingress.enabled` | `false` | Deprecated. Use `spec.networking` for new installations |
 | `livenessEnabled` | `false` | Enable only with a working health endpoint |
 | `readinessEnabled` | `false` | Enable only with a working health endpoint |
 | `startupEnabled` | `false` | |

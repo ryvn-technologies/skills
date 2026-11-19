@@ -41,8 +41,10 @@ Common doc paths:
 | Logs | `observability/logs` |
 | Metrics | `observability/metrics` |
 | Notifications | `observability/notifications` |
-| Custom domains | `networking/custom-domains` |
-| TLS certificates | `networking/tls-certificates` |
+| Networking overview | `networking/overview` |
+| Routes | `networking/routes` |
+| Domains and TLS | `networking/domains-and-tls` |
+| Ingress (deprecated) | `networking/migration-guides/ingress-networking` |
 | Deployment approvals | `guides/deployment-approvals` |
 | Drift protection | `guides/drift-protection` |
 | CLI | `experimental/cli` |
