@@ -53,6 +53,11 @@ When editing this plugin:
   something, not why the implementation works the way it does.
 - Verify CLI behavior claims against the Ryvn CLI source code, then describe the
   behavior a user sees rather than the code that produces it.
+- `hooks/auto-approve-cli.sh` and `allowed-tools` in `SKILL.md` auto-approve every `ryvn` command,
+  so agents can operate Ryvn without prompts. They must grant nothing else: the hook approves exactly
+  one `ryvn` command per payload (quoted arguments are data, but nothing may chain, substitute,
+  redirect, or start a new line at the top level), and `allowed-tools` names no other binary beyond
+  `command -v ryvn`.
 - Bump `version` in `plugins/ryvn/.claude-plugin/plugin.json` in any PR that changes skill content.
 
 ## References

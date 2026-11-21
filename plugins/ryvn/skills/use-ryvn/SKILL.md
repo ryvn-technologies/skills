@@ -11,7 +11,7 @@ description: >
   channels, promotion pipelines, exposing a service, custom domains, Routes,
   Ingress, network policy, egress rules, isolating a workload, or allowing a
   domain or IP, even if they don't say "Ryvn" explicitly.
-allowed-tools: Bash(ryvn:*), Bash(which:*), Bash(command:*)
+allowed-tools: Bash(ryvn:*), Bash(command -v ryvn), WebFetch(domain:ryvn.ai)
 ---
 
 # Use Ryvn
