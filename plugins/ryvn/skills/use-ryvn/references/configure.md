@@ -46,6 +46,13 @@ ryvn get service my-api                            # Get specific service
 ryvn describe service my-api                       # Detailed info including deployments and config
 ```
 
+`ryvn update service <name>` (aliases `services`, `svc`) follows the patch rules above, including
+`--dry-run`. It requires organization member read and Service write access.
+Label maps merge by key: use `null` for a single label to remove it, or `metadata.labels: null`
+to clear all labels. An empty map leaves labels unchanged and warns.
+`spec.build` is not patchable; use the complete Service document with `ryvn replace -f` instead.
+Run `--rollout-mode` and `--helm-timeout` without patch or dry-run flags.
+
 ## Blueprint Management
 
 Blueprints are reusable templates that define infrastructure and service configurations. Blueprint installations are instances of a blueprint deployed into an environment.
